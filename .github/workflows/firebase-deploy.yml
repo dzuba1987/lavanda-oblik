@@ -31,13 +31,6 @@ jobs:
       - name: Build (static export)
         run: npm run build
 
-      - name: Deploy Firestore rules & indexes
-        uses: w9jds/firebase-action@v14.10.1
-        with:
-          args: deploy --only firestore --project lavanda-oblik --non-interactive
-        env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LAVANDA_OBLIK }}
-
       - name: Deploy Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
