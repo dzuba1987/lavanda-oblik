@@ -1,0 +1,42 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { AppShell } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const { loading, authUser, userDoc, signOut } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !authUser) router.replace("/login/");
+  }, [loading, authUser, router]);
+
+  if (loading || !authUser) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+      </div>
+    );
+  }
+
+  if (userDoc && userDoc.role === "viewer") {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+        <h1 className="text-xl font-semibold">Очікування доступу</h1>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Ваш акаунт зареєстровано. Адміністратор має підвищити роль у налаштуваннях,
+          щоб ви могли працювати з обліком.
+        </p>
+        <Button variant="outline" size="sm" onClick={signOut}>
+          Вийти
+        </Button>
+      </div>
+    );
+  }
+
+  return <AppShell>{children}</AppShell>;
+}

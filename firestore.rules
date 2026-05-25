@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthed()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc(request.auth.uid).role == 'admin';
+    }
+
+    // users — кожен читає й створює свій док при першому вході; адмін керує всіма
+    match /users/{uid} {
+      allow read: if isAuthed();
+      allow create: if isAuthed() && request.auth.uid == uid;
+      allow update: if isAuthed() && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Основні колекції доступні тільки адміну. Пізніше додамо ролі seller/viewer.
+    match /categories/{id}   { allow read, write: if isAdmin(); }
+    match /products/{id}     { allow read, write: if isAdmin(); }
+    match /suppliers/{id}    { allow read, write: if isAdmin(); }
+    match /customers/{id}    { allow read, write: if isAdmin(); }
+    match /transactions/{id} { allow read, write: if isAdmin(); }
+
+    // Все інше — заборонено
+    match /{document=**} { allow read, write: if false; }
+  }
+}

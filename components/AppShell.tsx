@@ -1,0 +1,198 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Receipt,
+  BarChart3,
+  Settings,
+  Sprout,
+  LogOut,
+  User as UserIcon,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+};
+
+const NAV: NavItem[] = [
+  { href: "/dashboard/", label: "Дашборд", icon: LayoutDashboard },
+  { href: "/transactions/", label: "Транзакції", icon: Receipt },
+  { href: "/analytics/", label: "Аналітика", icon: BarChart3 },
+  { href: "/settings/", label: "Налаштування", icon: Settings },
+];
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-full flex-1 flex-col md:flex-row">
+      <Sidebar />
+      <div className="flex flex-1 flex-col">
+        <MobileHeader />
+        <div className="flex-1 pb-20 md:pb-0">{children}</div>
+        <BottomNav />
+      </div>
+    </div>
+  );
+}
+
+function Sidebar() {
+  const pathname = usePathname();
+  return (
+    <aside className="hidden w-60 shrink-0 flex-col border-r bg-card md:flex">
+      <div className="flex h-16 items-center gap-2 border-b px-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-white">
+          <Sprout className="h-5 w-5" />
+        </div>
+        <span className="font-semibold tracking-tight">ЛавандаОблік</span>
+      </div>
+
+      <nav className="flex-1 space-y-1 p-3">
+        {NAV.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(pathname, item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                active
+                  ? "bg-violet-100 text-violet-900 dark:bg-violet-950/50 dark:text-violet-200"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="border-t p-3">
+        <ProfileMenu align="start" />
+      </div>
+    </aside>
+  );
+}
+
+function MobileHeader() {
+  return (
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-card/95 px-4 backdrop-blur md:hidden">
+      <div className="flex items-center gap-2">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-violet-600 text-white">
+          <Sprout className="h-4 w-4" />
+        </div>
+        <span className="font-semibold tracking-tight">ЛавандаОблік</span>
+      </div>
+      <ProfileMenu align="end" compact />
+    </header>
+  );
+}
+
+function BottomNav() {
+  const pathname = usePathname();
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center border-t bg-card/95 backdrop-blur md:hidden">
+      {NAV.map((item) => {
+        const Icon = item.icon;
+        const active = isActive(pathname, item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs",
+              active
+                ? "text-violet-600 dark:text-violet-400"
+                : "text-muted-foreground"
+            )}
+          >
+            <Icon className={cn("h-5 w-5", active && "scale-110 transition-transform")} />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function ProfileMenu({
+  align,
+  compact,
+}: {
+  align: "start" | "end";
+  compact?: boolean;
+}) {
+  const { authUser, userDoc, signOut } = useAuth();
+  const initials = (userDoc?.name ?? authUser?.email ?? "?")
+    .split(/\s+|@/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join("");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className={cn(
+            "h-10 w-full justify-start gap-3 px-2",
+            compact && "w-auto"
+          )}
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm font-semibold text-violet-700 dark:bg-violet-950/50 dark:text-violet-200">
+            {initials || <UserIcon className="h-4 w-4" />}
+          </div>
+          {!compact && (
+            <div className="flex min-w-0 flex-col items-start">
+              <span className="truncate text-sm font-medium">
+                {userDoc?.name ?? authUser?.email}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {userDoc?.role ?? "—"}
+              </span>
+            </div>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={align} className="w-56">
+        <DropdownMenuLabel className="flex flex-col">
+          <span className="truncate font-medium">{authUser?.email}</span>
+          <Badge
+            variant={userDoc?.role === "admin" ? "default" : "secondary"}
+            className="mt-1 w-fit"
+          >
+            {userDoc?.role ?? "—"}
+          </Badge>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={signOut} variant="destructive">
+          <LogOut className="mr-2 h-4 w-4" />
+          Вийти
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function isActive(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  const normalized = pathname.endsWith("/") ? pathname : pathname + "/";
+  return normalized === href || normalized.startsWith(href);
+}
