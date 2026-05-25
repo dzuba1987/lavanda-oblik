@@ -8,10 +8,19 @@ import {
   Users,
   Upload,
   ChevronRight,
+  FlaskConical,
+  type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-const SECTIONS = [
+type Section = {
+  href: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+};
+
+const SECTIONS: Section[] = [
   {
     href: "/settings/categories/",
     label: "Категорії",
@@ -43,6 +52,15 @@ const SECTIONS = [
     icon: Upload,
   },
 ];
+
+if (process.env.NODE_ENV === "development") {
+  SECTIONS.push({
+    href: "/settings/dev/",
+    label: "Розробник",
+    description: "Тестові дані, сід / видалення",
+    icon: FlaskConical,
+  });
+}
 
 export default function SettingsPage() {
   return (
