@@ -50,3 +50,7 @@ emulator-data/
 # IDE
 .idea/
 .vscode/
+
+# Local data files (не комітити чутливі дані)
+/*.xlsx
+/data/
