@@ -9,9 +9,11 @@ import {
   Upload,
   ChevronRight,
   FlaskConical,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 type Section = {
   href: string;
@@ -20,7 +22,7 @@ type Section = {
   icon: LucideIcon;
 };
 
-const SECTIONS: Section[] = [
+const BASE_SECTIONS: Section[] = [
   {
     href: "/settings/categories/",
     label: "Категорії",
@@ -53,16 +55,28 @@ const SECTIONS: Section[] = [
   },
 ];
 
-if (process.env.NODE_ENV === "development") {
-  SECTIONS.push({
-    href: "/settings/dev/",
-    label: "Розробник",
-    description: "Тестові дані, сід / видалення",
-    icon: FlaskConical,
-  });
-}
+const ADMIN_SECTION: Section = {
+  href: "/settings/users/",
+  label: "Користувачі",
+  description: "Список акаунтів та керування ролями",
+  icon: UserCog,
+};
+
+const DEV_SECTION: Section = {
+  href: "/settings/dev/",
+  label: "Розробник",
+  description: "Тестові дані, сід / видалення",
+  icon: FlaskConical,
+};
 
 export default function SettingsPage() {
+  const { userDoc } = useAuth();
+  const isAdmin = userDoc?.role === "admin";
+
+  const sections: Section[] = [...BASE_SECTIONS];
+  if (isAdmin) sections.push(ADMIN_SECTION);
+  if (process.env.NODE_ENV === "development" && isAdmin) sections.push(DEV_SECTION);
+
   return (
     <main className="container mx-auto flex flex-1 flex-col gap-6 px-4 py-6">
       <header>
@@ -74,7 +88,7 @@ export default function SettingsPage() {
 
       <Card>
         <CardContent className="divide-y p-0">
-          {SECTIONS.map((s) => {
+          {sections.map((s) => {
             const Icon = s.icon;
             return (
               <Link

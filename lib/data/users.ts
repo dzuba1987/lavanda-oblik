@@ -2,10 +2,12 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   serverTimestamp,
   collection,
   limit,
   getDocs,
+  orderBy,
   query,
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
@@ -13,6 +15,20 @@ import { firebase } from "@/lib/firebase/client";
 import type { Role, UserDoc } from "./types";
 
 const USERS = "users";
+
+export async function listUsers(): Promise<UserDoc[]> {
+  const snap = await getDocs(
+    query(collection(firebase.db, USERS), orderBy("createdAt", "desc"))
+  );
+  return snap.docs.map((d) => ({
+    uid: d.id,
+    ...(d.data() as Omit<UserDoc, "uid">),
+  }));
+}
+
+export async function updateUserRole(uid: string, role: Role): Promise<void> {
+  await updateDoc(doc(firebase.db, USERS, uid), { role });
+}
 
 export async function getUserDoc(uid: string): Promise<UserDoc | null> {
   const snap = await getDoc(doc(firebase.db, USERS, uid));

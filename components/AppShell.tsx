@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Receipt,
+  ClipboardList,
   BarChart3,
   Settings,
   Sprout,
@@ -27,14 +28,16 @@ import { Badge } from "@/components/ui/badge";
 type NavItem = {
   href: string;
   label: string;
+  shortLabel?: string;
   icon: typeof LayoutDashboard;
 };
 
 const NAV: NavItem[] = [
   { href: "/dashboard/", label: "Дашборд", icon: LayoutDashboard },
   { href: "/transactions/", label: "Транзакції", icon: Receipt },
+  { href: "/orders/", label: "Замовлення", icon: ClipboardList },
   { href: "/analytics/", label: "Аналітика", icon: BarChart3 },
-  { href: "/settings/", label: "Налаштування", icon: Settings },
+  { href: "/settings/", label: "Налаштування", shortLabel: "Меню", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -116,14 +119,16 @@ function BottomNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs",
+              "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px]",
               active
                 ? "text-violet-600 dark:text-violet-400"
                 : "text-muted-foreground"
             )}
           >
             <Icon className={cn("h-5 w-5", active && "scale-110 transition-transform")} />
-            <span>{item.label}</span>
+            <span className="max-w-full truncate">
+              {item.shortLabel ?? item.label}
+            </span>
           </Link>
         );
       })}

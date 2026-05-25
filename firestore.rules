@@ -102,6 +102,24 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ===== orders =====
+    match /orders/{id} {
+      allow read: if isAdmin();
+
+      allow create: if isAdmin()
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.status in ['new', 'confirmed', 'in_progress', 'ready', 'delivered', 'cancelled']
+        && isNonNegative(request.resource.data.totalAmount)
+        && request.resource.data.createdBy == request.auth.uid;
+
+      allow update: if isAdmin()
+        && request.resource.data.status in ['new', 'confirmed', 'in_progress', 'ready', 'delivered', 'cancelled']
+        && isNonNegative(request.resource.data.totalAmount);
+
+      allow delete: if isAdmin();
+    }
+
     // ===== transactions =====
     match /transactions/{id} {
       allow read: if isAdmin();

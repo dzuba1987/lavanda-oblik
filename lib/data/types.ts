@@ -63,7 +63,60 @@ export interface Transaction {
   quantity: number;
   totalAmount: number;
   note: string | null;
+  /** Якщо транзакцію створено з замовлення — посилання на нього. */
+  orderId?: string | null;
   createdBy: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export type OrderStatus =
+  | "new"
+  | "confirmed"
+  | "in_progress"
+  | "ready"
+  | "delivered"
+  | "cancelled";
+
+export const ORDER_STATUSES: OrderStatus[] = [
+  "new",
+  "confirmed",
+  "in_progress",
+  "ready",
+  "delivered",
+  "cancelled",
+];
+
+export const ORDER_ACTIVE_STATUSES: OrderStatus[] = [
+  "new",
+  "confirmed",
+  "in_progress",
+  "ready",
+];
+
+export interface OrderItem {
+  productId: string | null;
+  productName: string;
+  categoryId: string;
+  categoryName: string;
+  unitPrice: number;
+  quantity: number;
+  totalAmount: number;
+}
+
+export interface Order {
+  id: string;
+  customerId: string | null;
+  customerName: string | null;
+  items: OrderItem[];
+  totalAmount: number;
+  deadline: Timestamp | null;
+  status: OrderStatus;
+  notes: string | null;
+  /** ID транзакцій, створених при переході в delivered. */
+  transactionIds: string[];
+  createdBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  deliveredAt: Timestamp | null;
 }
