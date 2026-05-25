@@ -5,7 +5,6 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   TrendingUp,
-  Receipt,
   Percent,
 } from "lucide-react";
 import { toast } from "sonner";
