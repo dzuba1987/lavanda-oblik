@@ -28,8 +28,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
         <h1 className="text-xl font-semibold">Очікування доступу</h1>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Ваш акаунт зареєстровано. Адміністратор має підвищити роль у налаштуваннях,
-          щоб ви могли працювати з обліком.
+          Ваш акаунт розглядає адміністратор. Після підтвердження ви зможете
+          увійти і працювати з обліком.
         </p>
         <Button variant="outline" size="sm" onClick={signOut}>
           Вийти

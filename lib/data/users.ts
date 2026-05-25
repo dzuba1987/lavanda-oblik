@@ -3,6 +3,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   collection,
   limit,
@@ -28,6 +29,10 @@ export async function listUsers(): Promise<UserDoc[]> {
 
 export async function updateUserRole(uid: string, role: Role): Promise<void> {
   await updateDoc(doc(firebase.db, USERS, uid), { role });
+}
+
+export async function deleteUserDoc(uid: string): Promise<void> {
+  await deleteDoc(doc(firebase.db, USERS, uid));
 }
 
 export async function getUserDoc(uid: string): Promise<UserDoc | null> {

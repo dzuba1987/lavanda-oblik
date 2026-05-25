@@ -10,7 +10,7 @@ import {
 } from "firebase/firestore";
 import { firebase } from "@/lib/firebase/client";
 import { DEFAULT_CATEGORY_COLORS } from "./categories";
-import type { TransactionType } from "./types";
+import type { OrderItem, OrderStatus, TransactionType } from "./types";
 
 const SEED_COLLECTIONS = [
   "categories",
@@ -18,6 +18,7 @@ const SEED_COLLECTIONS = [
   "suppliers",
   "customers",
   "transactions",
+  "orders",
 ] as const;
 
 type SeedCounts = Record<(typeof SEED_COLLECTIONS)[number], number>;
@@ -92,6 +93,7 @@ export async function seedTestData(uid: string): Promise<SeedCounts> {
     suppliers: 0,
     customers: 0,
     transactions: 0,
+    orders: 0,
   };
 
   const catRefs = new Map<string, { id: string; name: string; type: TransactionType }>();
@@ -281,7 +283,160 @@ export async function seedTestData(uid: string): Promise<SeedCounts> {
   if (inBatch > 0) await batch.commit();
   counts.transactions = written;
 
+  // === Тестові замовлення ===
+  const ordersWritten = await seedOrders(uid, catRefs, productRefs, customerRefs);
+  counts.orders = ordersWritten;
+
   return counts;
+}
+
+type CatRef = { id: string; name: string; type: TransactionType };
+type ProdRef = { id: string; name: string; price: number; categoryName: string };
+type CustRef = { id: string; name: string };
+
+async function seedOrders(
+  uid: string,
+  catRefs: Map<string, CatRef>,
+  productRefs: ProdRef[],
+  customerRefs: CustRef[]
+): Promise<number> {
+  const db = firebase.db;
+  const now = new Date();
+
+  function daysFromNow(n: number): Date {
+    const d = new Date(now);
+    d.setDate(d.getDate() + n);
+    d.setHours(18, 0, 0, 0);
+    return d;
+  }
+
+  function findProduct(name: string): ProdRef | null {
+    return productRefs.find((p) => p.name === name) ?? null;
+  }
+
+  function makeItem(
+    productName: string,
+    quantity: number,
+    priceOverride?: number
+  ): OrderItem | null {
+    const prod = findProduct(productName);
+    if (!prod) return null;
+    const cat = catRefs.get(prod.categoryName);
+    if (!cat) return null;
+    const unitPrice = priceOverride ?? prod.price;
+    return {
+      productId: prod.id,
+      productName: prod.name,
+      categoryId: cat.id,
+      categoryName: cat.name,
+      unitPrice,
+      quantity,
+      totalAmount: unitPrice * quantity,
+    };
+  }
+
+  type SeedOrder = {
+    customerName: string;
+    status: OrderStatus;
+    deadlineOffsetDays: number | null;
+    items: { product: string; qty: number; price?: number }[];
+    notes: string | null;
+    createdDaysAgo: number;
+  };
+
+  const SEED_ORDERS: SeedOrder[] = [
+    {
+      customerName: "Сергій меблі",
+      status: "new",
+      deadlineOffsetDays: 3,
+      items: [{ product: "Букет лаванди малий", qty: 10, price: 100 }],
+      notes: "Корпоративний подарунок співробітникам",
+      createdDaysAgo: 1,
+    },
+    {
+      customerName: "Анна",
+      status: "confirmed",
+      deadlineOffsetDays: 7,
+      items: [{ product: "Екскурсія полем", qty: 10, price: 700 }],
+      notes: "Майстер-клас на 10 учасників",
+      createdDaysAgo: 2,
+    },
+    {
+      customerName: "Марія",
+      status: "in_progress",
+      deadlineOffsetDays: 5,
+      items: [
+        { product: "Ефірна олія 10 мл", qty: 5 },
+        { product: "Гідролат 100 мл", qty: 5 },
+      ],
+      notes: "Подарунковий набір під весілля",
+      createdDaysAgo: 4,
+    },
+    {
+      customerName: "Тетяна",
+      status: "ready",
+      deadlineOffsetDays: 1,
+      items: [{ product: "Букет лаванди великий", qty: 3 }],
+      notes: "Самовивіз з поля у п'ятницю",
+      createdDaysAgo: 6,
+    },
+    {
+      customerName: "Юлія",
+      status: "ready",
+      deadlineOffsetDays: -2,
+      items: [{ product: "Сухоцвіт пучок", qty: 8 }],
+      notes: "ПРОСТРОЧЕНО — клієнт не забрав",
+      createdDaysAgo: 14,
+    },
+    {
+      customerName: "Оксана",
+      status: "cancelled",
+      deadlineOffsetDays: 10,
+      items: [{ product: "Саджанець лаванди", qty: 50, price: 70 }],
+      notes: "Клієнт скасував",
+      createdDaysAgo: 9,
+    },
+  ];
+
+  let batch = writeBatch(db);
+  let written = 0;
+
+  for (const seedOrder of SEED_ORDERS) {
+    const cust = customerRefs.find((c) => c.name === seedOrder.customerName);
+    const items = seedOrder.items
+      .map((it) => makeItem(it.product, it.qty, it.price))
+      .filter((it): it is OrderItem => it !== null);
+
+    if (items.length === 0) continue;
+
+    const totalAmount = items.reduce((acc, it) => acc + it.totalAmount, 0);
+    const deadline =
+      seedOrder.deadlineOffsetDays !== null
+        ? daysFromNow(seedOrder.deadlineOffsetDays)
+        : null;
+    const createdAt = dateNDaysAgo(seedOrder.createdDaysAgo);
+
+    const ref = doc(collection(db, "orders"));
+    batch.set(ref, {
+      customerId: cust?.id ?? null,
+      customerName: seedOrder.customerName,
+      items,
+      totalAmount,
+      deadline: deadline ? Timestamp.fromDate(deadline) : null,
+      status: seedOrder.status,
+      notes: seedOrder.notes,
+      transactionIds: [],
+      deliveredAt: null,
+      createdBy: uid,
+      seed: true,
+      createdAt: Timestamp.fromDate(createdAt),
+      updatedAt: Timestamp.fromDate(createdAt),
+    });
+    written++;
+  }
+
+  await batch.commit();
+  return written;
 }
 
 export async function removeSeedData(): Promise<SeedCounts> {
@@ -292,6 +447,7 @@ export async function removeSeedData(): Promise<SeedCounts> {
     suppliers: 0,
     customers: 0,
     transactions: 0,
+    orders: 0,
   };
 
   for (const name of SEED_COLLECTIONS) {

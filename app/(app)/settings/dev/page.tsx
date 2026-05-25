@@ -37,7 +37,7 @@ export default function DevSettingsPage() {
     setLastResult(null);
     try {
       const counts = await seedTestData(authUser.uid);
-      const msg = `Створено: категорій ${counts.categories}, товарів ${counts.products}, постачальників ${counts.suppliers}, клієнтів ${counts.customers}, транзакцій ${counts.transactions}`;
+      const msg = `Створено: категорій ${counts.categories}, товарів ${counts.products}, постачальників ${counts.suppliers}, клієнтів ${counts.customers}, транзакцій ${counts.transactions}, замовлень ${counts.orders}`;
       setLastResult(msg);
       toast.success("Тестові дані створено");
     } catch (e) {
@@ -54,7 +54,7 @@ export default function DevSettingsPage() {
     setLastResult(null);
     try {
       const counts = await removeSeedData();
-      const msg = `Видалено: категорій ${counts.categories}, товарів ${counts.products}, постачальників ${counts.suppliers}, клієнтів ${counts.customers}, транзакцій ${counts.transactions}`;
+      const msg = `Видалено: категорій ${counts.categories}, товарів ${counts.products}, постачальників ${counts.suppliers}, клієнтів ${counts.customers}, транзакцій ${counts.transactions}, замовлень ${counts.orders}`;
       setLastResult(msg);
       toast.success("Тестові дані видалено");
     } catch (e) {
