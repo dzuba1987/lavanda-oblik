@@ -37,6 +37,12 @@ import { cn } from "@/lib/utils";
 /** Скільки секунд після останнього heartbeat вважати юзера онлайн. */
 const ONLINE_THRESHOLD_SEC = 120;
 
+/**
+ * Власник системи — єдиний, хто може видаляти затверджених користувачів
+ * (admin/seller). Решта адмінів можуть тільки відхиляти заявки (viewer).
+ */
+const SUPER_OWNER_EMAIL = "dzubenko1987@gmail.com";
+
 const ROLE_LABELS: Record<Role, string> = {
   admin: "Адміністратор",
   seller: "Продавець",
@@ -56,6 +62,7 @@ export default function UsersSettingsPage() {
   const [savingUid, setSavingUid] = useState<string | null>(null);
 
   const isAdmin = userDoc?.role === "admin";
+  const isSuperOwner = userDoc?.email === SUPER_OWNER_EMAIL;
 
   useEffect(() => {
     if (!loading && !isAdmin) router.replace("/settings/");
@@ -115,6 +122,27 @@ export default function UsersSettingsPage() {
     } catch (e) {
       const err = e as { message?: string };
       toast.error(err?.message ?? "Не вдалось відхилити заявку");
+    } finally {
+      setSavingUid(null);
+    }
+  }
+
+  async function handleDelete(uid: string, email: string) {
+    if (
+      !window.confirm(
+        `Видалити користувача ${email}? Доступ буде відкликано остаточно. Цю дію не можна скасувати.`
+      )
+    ) {
+      return;
+    }
+    setSavingUid(uid);
+    try {
+      await deleteUserDoc(uid);
+      setUsers((prev) => (prev ? prev.filter((u) => u.uid !== uid) : prev));
+      toast.success("Користувача видалено");
+    } catch (e) {
+      const err = e as { message?: string };
+      toast.error(err?.message ?? "Не вдалось видалити користувача");
     } finally {
       setSavingUid(null);
     }
@@ -231,28 +259,41 @@ export default function UsersSettingsPage() {
                             </Button>
                           </div>
                         ) : (
-                          <Select
-                            value={u.role}
-                            onValueChange={(v) =>
-                              handleRoleChange(u.uid, v as Role)
-                            }
-                            disabled={savingUid === u.uid}
-                          >
-                            <SelectTrigger className="h-8 w-[160px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="admin">
-                                {ROLE_LABELS.admin}
-                              </SelectItem>
-                              <SelectItem value="seller">
-                                {ROLE_LABELS.seller}
-                              </SelectItem>
-                              <SelectItem value="viewer">
-                                {ROLE_LABELS.viewer}
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Select
+                              value={u.role}
+                              onValueChange={(v) =>
+                                handleRoleChange(u.uid, v as Role)
+                              }
+                              disabled={savingUid === u.uid}
+                            >
+                              <SelectTrigger className="h-8 w-[160px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">
+                                  {ROLE_LABELS.admin}
+                                </SelectItem>
+                                <SelectItem value="seller">
+                                  {ROLE_LABELS.seller}
+                                </SelectItem>
+                                <SelectItem value="viewer">
+                                  {ROLE_LABELS.viewer}
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {isSuperOwner && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(u.uid, u.email)}
+                                disabled={savingUid === u.uid}
+                              >
+                                Видалити
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="hidden text-right text-muted-foreground md:table-cell">

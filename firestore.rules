@@ -63,7 +63,15 @@ service cloud.firestore {
         || (isAdmin() && isValidRole(request.resource.data.role))
       );
 
-      allow delete: if isAdmin();
+      // Видалення:
+      //   • будь-який адмін може відхиляти заявки (resource.role == 'viewer')
+      //   • затверджених admin/seller може видаляти лише власник системи
+      //     (зашитий email — щоб уникнути ситуації коли інший admin прибирає
+      //      когось випадково)
+      allow delete: if isAdmin() && (
+        resource.data.role == 'viewer'
+        || request.auth.token.email == 'dzubenko1987@gmail.com'
+      );
     }
 
     // ===== categories =====
