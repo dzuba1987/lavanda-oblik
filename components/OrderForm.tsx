@@ -78,6 +78,11 @@ export type OrderFormProps = {
   customers: Customer[];
   onSaved: () => void;
   onDictChanged?: () => void;
+  /**
+   * Draft з AI-парсингу голосового замовлення. Якщо переданий і немає
+   * `initial` — попередньо заповнює форму. Транскрипт показується банером.
+   */
+  aiDraft?: import("@/lib/ai/types").ParsedOrder | null;
 };
 
 export function OrderForm({
@@ -90,6 +95,7 @@ export function OrderForm({
   customers,
   onSaved,
   onDictChanged,
+  aiDraft,
 }: OrderFormProps) {
   const { authUser, userDoc } = useAuth();
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -165,6 +171,39 @@ export function OrderForm({
       );
       setDeliveryPaidBy(initial.delivery?.paidBy ?? "");
       newOrderIdRef.current = initial.id;
+    } else if (aiDraft) {
+      // Префіл з AI-парсингу голосового замовлення. Беремо найкращий
+      // customer-кандидат якщо score < 0.3 (high-confidence), інакше null —
+      // user обере зі списку candidates у UI.
+      const bestCandidate = aiDraft.customerCandidates[0];
+      const autoMatchCustomer =
+        bestCandidate && bestCandidate.score < 0.3 ? bestCandidate : null;
+      setCustomerId(autoMatchCustomer?.id ?? null);
+      setPhone("");
+      setItems(
+        aiDraft.items.length > 0
+          ? aiDraft.items.map((it, i) => ({
+              id: `ai-${i}`,
+              productId: it.productId,
+              productName: it.productName,
+              categoryId: it.categoryId,
+              categoryName: it.categoryName,
+              unitPrice: String(it.unitPrice),
+              quantity: String(it.quantity),
+            }))
+          : [emptyItem()]
+      );
+      setDeadline("");
+      setNotes(aiDraft.notes ?? "");
+      setPhotoSlots([]);
+      setDeliveryMethod(aiDraft.delivery?.method ?? "");
+      setDeliveryTracking(aiDraft.delivery?.trackingNumber ?? "");
+      setDeliveryAddress(aiDraft.delivery?.address ?? "");
+      setDeliveryCost(
+        aiDraft.delivery?.cost != null ? String(aiDraft.delivery.cost) : ""
+      );
+      setDeliveryPaidBy(aiDraft.delivery?.paidBy ?? "");
+      newOrderIdRef.current = newOrderId();
     } else {
       setCustomerId(null);
       setPhone("");
@@ -182,7 +221,7 @@ export function OrderForm({
     setLocalCategories([]);
     setLocalProducts([]);
     setLocalCustomers([]);
-  }, [open, initial, customers]);
+  }, [open, initial, customers, aiDraft]);
 
   // М'який backfill телефону: якщо форму відкрито без збереженого phone, але
   // у клієнта є phone у словнику customers — підставити. Спрацьовує, коли
@@ -529,6 +568,37 @@ export function OrderForm({
         </DialogHeader>
 
         <div className="thin-scrollbar -mx-6 flex-1 space-y-4 overflow-y-auto px-6 py-2">
+          {aiDraft && !initial && (
+            <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-xs dark:border-violet-900/40 dark:bg-violet-950/30">
+              <div className="mb-1 flex items-center gap-1.5 font-medium text-violet-700 dark:text-violet-300">
+                🎙 Голосовий ввід
+              </div>
+              <div className="italic text-violet-900/80 dark:text-violet-200/80">
+                «{aiDraft.transcript}»
+              </div>
+              {aiDraft.customerCandidates.length > 0 && !customerId && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-violet-700 dark:text-violet-300">
+                    Клієнт «{aiDraft.customerName}»:
+                  </span>
+                  {aiDraft.customerCandidates.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setCustomerId(c.id);
+                        const cust = allCustomers.find((x) => x.id === c.id);
+                        if (cust?.phone) setPhone(cust.phone);
+                      }}
+                      className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-200 transition-colors hover:bg-violet-100 dark:bg-violet-900/50 dark:text-violet-200 dark:ring-violet-800"
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1">
               <Label>Клієнт (опц.)</Label>

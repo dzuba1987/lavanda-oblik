@@ -1,4 +1,8 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+} from "firebase/app-check";
 import { getAuth, connectAuthEmulator, type Auth } from "firebase/auth";
 import {
   initializeFirestore,
@@ -28,6 +32,29 @@ function getFirebase() {
 
   if (!_app) {
     _app = getApps()[0] ?? initializeApp(firebaseConfig);
+
+    // App Check (захист Firebase AI Logic та інших API від несанкціонованих клієнтів).
+    // Ініціалізуємо ДО getAuth/initializeFirestore — інакше токен не прикріпиться.
+    // Якщо env не заданий — пропускаємо (locally / без AI можна жити без App Check).
+    const recaptchaKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+    if (recaptchaKey) {
+      // У дев-режимі вмикаємо debug-токен (Firebase запише його в console — додай
+      // у Firebase Console → App Check → Apps → Manage debug tokens).
+      if (process.env.NODE_ENV !== "production") {
+        (
+          self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string }
+        ).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+      }
+      try {
+        initializeAppCheck(_app, {
+          provider: new ReCaptchaEnterpriseProvider(recaptchaKey),
+          isTokenAutoRefreshEnabled: true,
+        });
+      } catch (e) {
+        console.warn("App Check init failed:", e);
+      }
+    }
+
     _auth = getAuth(_app);
     _db = initializeFirestore(_app, {
       localCache: persistentLocalCache({

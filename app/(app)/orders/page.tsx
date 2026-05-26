@@ -152,6 +152,9 @@ export default function OrdersPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Order | null>(null);
+  const [aiDraft, setAiDraft] = useState<
+    import("@/lib/ai/types").ParsedOrder | null
+  >(null);
 
   const [pendingDelete, setPendingDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -279,6 +282,13 @@ export default function OrdersPage() {
 
   function openCreate() {
     setEditing(null);
+    setAiDraft(null);
+    setFormOpen(true);
+  }
+
+  function openCreateFromAi(draft: import("@/lib/ai/types").ParsedOrder) {
+    setEditing(null);
+    setAiDraft(draft);
     setFormOpen(true);
   }
 
@@ -362,7 +372,12 @@ export default function OrdersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <VoiceOrderButton />
+          <VoiceOrderButton
+            categories={categories}
+            products={products}
+            customers={customers}
+            onParsed={openCreateFromAi}
+          />
           <Button
             onClick={openCreate}
             className="hidden bg-violet-600 hover:bg-violet-700 md:inline-flex"
@@ -420,7 +435,7 @@ export default function OrdersPage() {
           />
         </div>
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-          <SelectTrigger className="sm:w-[220px]">
+          <SelectTrigger className="hidden sm:flex sm:w-[220px]">
             <ArrowUpDown className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
             <SelectValue />
           </SelectTrigger>
@@ -460,12 +475,16 @@ export default function OrdersPage() {
 
       <OrderForm
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={(o) => {
+          setFormOpen(o);
+          if (!o) setAiDraft(null);
+        }}
         initial={editing}
         uid={authUser.uid}
         categories={categories}
         products={products}
         customers={customers}
+        aiDraft={aiDraft}
         onSaved={reload}
         onDictChanged={reloadDicts}
       />

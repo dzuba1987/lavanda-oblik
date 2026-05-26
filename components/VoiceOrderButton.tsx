@@ -13,14 +13,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useSpeechRecognition } from "@/lib/voice/useSpeechRecognition";
+import { parseOrderTranscript } from "@/lib/ai/parseOrder";
+import type { ParsedOrder } from "@/lib/ai/types";
+import type { Category, Customer, Product } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 
 export type VoiceOrderButtonProps = {
+  categories: Category[];
+  products: Product[];
+  customers: Customer[];
   /**
-   * Викликається коли користувач натиснув «Опрацювати» з готовим транскриптом.
-   * Поки що — заглушка під майбутній AI-парсер.
+   * Викликається з результатом AI-парсингу. Хост-сторінка має відкрити
+   * OrderForm з aiDraft={result}.
    */
-  onSubmit?: (transcript: string) => void;
+  onParsed: (result: ParsedOrder) => void;
   className?: string;
 };
 
@@ -29,8 +35,15 @@ export type VoiceOrderButtonProps = {
  * transcription через Web Speech API. AI-парсинг підключається через
  * `onSubmit` — поки що показує toast із транскриптом.
  */
-export function VoiceOrderButton({ onSubmit, className }: VoiceOrderButtonProps) {
+export function VoiceOrderButton({
+  categories,
+  products,
+  customers,
+  onParsed,
+  className,
+}: VoiceOrderButtonProps) {
   const [open, setOpen] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const speech = useSpeechRecognition("uk-UA");
 
   // Зупиняємо запис при закритті діалогу.
@@ -48,21 +61,34 @@ export function VoiceOrderButton({ onSubmit, className }: VoiceOrderButtonProps)
     else speech.start();
   }
 
-  function handleProcess() {
+  async function handleProcess() {
     const text = speech.transcript.trim();
-    if (!text) return;
-    if (onSubmit) {
-      onSubmit(text);
-    } else {
-      toast.info(`Транскрипт: «${text}»`, {
-        description: "AI-парсер буде підключено наступним кроком.",
+    if (!text || parsing) return;
+    setParsing(true);
+    try {
+      const parsed = await parseOrderTranscript(text, {
+        categories,
+        products,
+        customers,
       });
-      console.log("[VoiceOrderButton] transcript:", text);
+      if (parsed.items.length === 0) {
+        toast.warning("AI не зрозуміла товарів у фразі — спробуй іще раз");
+        return;
+      }
+      onParsed(parsed);
+      setOpen(false);
+    } catch (e) {
+      console.error("parseOrderTranscript failed", e);
+      toast.error(
+        e instanceof Error ? `Помилка парсингу: ${e.message}` : "Помилка парсингу"
+      );
+    } finally {
+      setParsing(false);
     }
-    setOpen(false);
   }
 
   function handleClose() {
+    if (parsing) return;
     speech.stop();
     setOpen(false);
   }
@@ -118,6 +144,19 @@ export function VoiceOrderButton({ onSubmit, className }: VoiceOrderButtonProps)
                 </span>
               )}
             </div>
+
+            {/* Example hint — лише коли ще нічого не записано і не слухаємо */}
+            {speech.status === "idle" && !hasTranscript && (
+              <div className="rounded-md border border-dashed border-violet-200 bg-violet-50/50 p-2.5 text-xs dark:border-violet-900/40 dark:bg-violet-950/20">
+                <div className="mb-1 font-medium text-violet-700 dark:text-violet-300">
+                  Приклад:
+                </div>
+                <div className="italic text-muted-foreground">
+                  «Олі — 5 саджанців лаванди по 100 гривень, доставка Новою
+                  поштою 50 грн за рахунок клієнта»
+                </div>
+              </div>
+            )}
 
             {/* Mic button — велика, по центру */}
             <div className="flex justify-center py-2">
@@ -181,10 +220,15 @@ export function VoiceOrderButton({ onSubmit, className }: VoiceOrderButtonProps)
             <Button
               type="button"
               onClick={handleProcess}
-              disabled={!hasTranscript || isListening}
+              disabled={!hasTranscript || isListening || parsing}
               className="bg-violet-600 hover:bg-violet-700"
             >
-              {isListening ? (
+              {parsing ? (
+                <>
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  Опрацьовую…
+                </>
+              ) : isListening ? (
                 <>
                   <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                   Запис…
