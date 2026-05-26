@@ -34,6 +34,7 @@ export function IncomeExpenseChart({ data }: { data: MonthlyBucket[] }) {
             width={56}
           />
           <Tooltip
+            cursor={false}
             contentStyle={{
               borderRadius: 8,
               border: "1px solid hsl(var(--border))",
