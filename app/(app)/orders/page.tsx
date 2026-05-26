@@ -675,6 +675,11 @@ function OrderCard({
     deadlineDate &&
     deadlineDate < new Date() &&
     ACTIVE_STATUSES.includes(order.status);
+  // Fallback-дата для відображення, коли deadline не задано:
+  // для готових — дата завершення, інакше — дата створення.
+  const fallbackDate = !deadlineDate
+    ? tsToDate(order.deliveredAt) ?? tsToDate(order.createdAt)
+    : null;
   const photos = order.photos ?? [];
 
   return (
@@ -694,23 +699,18 @@ function OrderCard({
                 {STATUS_LABEL[order.status]}
               </Badge>
               <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                {order.customerName ?? "(без клієнта)"}
+                {firstItem ? firstItem.productName : "(порожнє)"}
+                {restCount > 0 && (
+                  <span className="font-normal text-muted-foreground/70">
+                    {" "}
+                    + ще {restCount}
+                  </span>
+                )}
               </span>
               {isOverdue && (
                 <Badge variant="destructive" className="shrink-0 font-normal">
                   Прострочено
                 </Badge>
-              )}
-              {deadlineDate && (
-                <span
-                  className={cn(
-                    "flex shrink-0 items-center gap-1 text-xs text-muted-foreground",
-                    isOverdue && "text-red-600 dark:text-red-400"
-                  )}
-                >
-                  <CalendarClock className="h-3 w-3" />
-                  {formatDate(deadlineDate)}
-                </span>
               )}
               {(order.commentsCount ?? 0) > 0 && (
                 <span
@@ -723,16 +723,8 @@ function OrderCard({
               )}
             </div>
 
-            <div className="text-xs text-muted-foreground">
-              {firstItem
-                ? firstItem.productName
-                : "(порожнє)"}
-              {restCount > 0 && (
-                <span className="text-muted-foreground/70">
-                  {" "}
-                  + ще {restCount}
-                </span>
-              )}
+            <div className="truncate text-xs text-muted-foreground">
+              {order.customerName ?? "(без клієнта)"}
             </div>
 
             {order.delivery && (
@@ -780,8 +772,25 @@ function OrderCard({
             )}
           </button>
 
-          <div className="shrink-0 pr-9 text-right text-lg font-bold tabular-nums text-violet-700 dark:text-violet-300">
-            {formatMoney(order.totalAmount)}
+          <div className="flex shrink-0 flex-col items-end gap-0.5 pr-9">
+            {(deadlineDate || fallbackDate) && (
+              <span
+                className={cn(
+                  "flex items-center gap-1 text-xs tabular-nums",
+                  isOverdue
+                    ? "text-red-600 dark:text-red-400"
+                    : deadlineDate
+                      ? "text-muted-foreground"
+                      : "text-muted-foreground/70"
+                )}
+              >
+                <CalendarClock className="h-3 w-3" />
+                {formatDate(deadlineDate ?? fallbackDate!)}
+              </span>
+            )}
+            <div className="text-lg font-bold tabular-nums text-violet-700 dark:text-violet-300">
+              {formatMoney(order.totalAmount)}
+            </div>
           </div>
         </div>
 
