@@ -122,25 +122,9 @@ export function EntityCombobox({
             onWheel={handleListWheel}
           >
             <CommandEmpty>
-              {onCreate && trimmed ? (
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
-                  onClick={handleCreate}
-                  disabled={creating}
-                >
-                  {creating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                  Створити «{trimmed}»
-                </button>
-              ) : (
-                <p className="px-3 py-2 text-sm text-muted-foreground">
-                  {emptyText}
-                </p>
-              )}
+              <p className="px-3 py-2 text-sm text-muted-foreground">
+                {emptyText}
+              </p>
             </CommandEmpty>
             <CommandGroup>
               {clearable && selected && (
@@ -184,22 +168,29 @@ export function EntityCombobox({
                   )}
                 </CommandItem>
               ))}
-              {onCreate && trimmed && !hasExact && items.length > 0 && (
-                <CommandItem
-                  value={`__create__${trimmed}`}
-                  onSelect={handleCreate}
-                  disabled={creating}
-                >
-                  {creating ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="mr-2 h-4 w-4" />
-                  )}
-                  Створити «{trimmed}»
-                </CommandItem>
-              )}
             </CommandGroup>
           </CommandList>
+          {onCreate && trimmed && !hasExact && (
+            <div className="border-t p-1">
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                onClick={handleCreate}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handleCreate();
+                }}
+                disabled={creating}
+              >
+                {creating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Створити «{trimmed}»
+              </button>
+            </div>
+          )}
         </Command>
       </PopoverContent>
     </Popover>
