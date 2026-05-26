@@ -33,7 +33,7 @@ export function CategoryPieChart({
               innerRadius="50%"
               outerRadius="85%"
               paddingAngle={2}
-              stroke="hsl(var(--card))"
+              stroke="var(--color-card)"
               strokeWidth={2}
             >
               {data.map((entry) => (
@@ -43,8 +43,8 @@ export function CategoryPieChart({
             <Tooltip
               contentStyle={{
                 borderRadius: 8,
-                border: "1px solid hsl(var(--border))",
-                background: "hsl(var(--card))",
+                border: "1px solid var(--color-border)",
+                background: "var(--color-card)",
                 fontSize: 12,
               }}
               formatter={(v) => formatMoney(Number(v))}

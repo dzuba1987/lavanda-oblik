@@ -54,8 +54,8 @@ export function StackedCategoryChart({
           <Tooltip
             contentStyle={{
               borderRadius: 8,
-              border: "1px solid hsl(var(--border))",
-              background: "hsl(var(--card))",
+              border: "1px solid var(--color-border)",
+              background: "var(--color-card)",
               fontSize: 12,
             }}
             formatter={(value, name) => [
