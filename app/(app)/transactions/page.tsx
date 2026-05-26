@@ -13,6 +13,7 @@ import {
   MoreVertical,
   Loader2,
   ShoppingCart,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,37 @@ export default function TransactionsPage() {
   });
   const [search, setSearch] = useState("");
 
+  // Фільтр по товару — приходить з URL (?product=<id> або ?productName=<name>),
+  // напр. при клікові з Топ-5 у дашборді. Читаємо з window, щоб не тягнути
+  // useSearchParams (вимагає Suspense у Next 13+ static export).
+  const [productFilter, setProductFilter] = useState<{
+    id: string | null;
+    name: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("product");
+    const name = params.get("productName");
+    if (id || name) {
+      setProductFilter({ id, name });
+      // Розширюємо період на «весь час», щоб показати всю історію
+      // по обраному товару, а не лише поточний місяць.
+      setPeriodPreset("all");
+    }
+  }, []);
+
+  function clearProductFilter() {
+    setProductFilter(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("product");
+      url.searchParams.delete("productName");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }
+
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [defaultType, setDefaultType] = useState<TransactionType>("expense");
@@ -137,16 +169,24 @@ export default function TransactionsPage() {
   }, [typeFilter, categoryFilter, periodPreset, customRange.from, customRange.to]);
 
   const filtered = useMemo(() => {
+    let list = items;
+    if (productFilter) {
+      list = list.filter((t) => {
+        if (productFilter.id) return t.productId === productFilter.id;
+        if (productFilter.name) return t.productName === productFilter.name;
+        return true;
+      });
+    }
     const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((t) =>
+    if (!q) return list;
+    return list.filter((t) =>
       `${t.categoryName} ${t.productName ?? ""} ${t.supplierName ?? ""} ${
         t.customerName ?? ""
       } ${t.note ?? ""}`
         .toLowerCase()
         .includes(q)
     );
-  }, [items, search]);
+  }, [items, search, productFilter]);
 
   const totals = useMemo(() => {
     let income = 0;
@@ -232,6 +272,30 @@ export default function TransactionsPage() {
             setCustomRange(c);
           }}
         />
+
+        {productFilter && (
+          <div className="flex items-center gap-2 rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-sm dark:border-violet-800 dark:bg-violet-950/40">
+            <ShoppingCart className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-300" />
+            <span className="min-w-0 flex-1 truncate">
+              Товар:{" "}
+              <span className="font-medium">
+                {productFilter.id
+                  ? products.find((p) => p.id === productFilter.id)?.name ??
+                    "(без назви)"
+                  : productFilter.name ?? "(без товару)"}
+              </span>
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={clearProductFilter}
+              className="h-6 w-6 shrink-0 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900"
+              aria-label="Скинути фільтр товару"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
 
         <Tabs
           value={typeFilter}

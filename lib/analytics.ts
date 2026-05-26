@@ -145,6 +145,15 @@ export type ProductRanking = {
   count: number;
 };
 
+/**
+ * Авто-створена транзакція доставки з замовлення: productId завжди null,
+ * productName рівно "Доставка". Виключаємо її з рейтингів товарів, щоб
+ * "Доставка" не з'являлась у Топ-N і не спотворювала аналітику продажів.
+ */
+function isDeliveryTransaction(t: Transaction): boolean {
+  return t.productId === null && t.productName === "Доставка";
+}
+
 export function topProducts(
   transactions: Transaction[],
   type: TransactionType,
@@ -153,6 +162,7 @@ export function topProducts(
   const map = new Map<string, ProductRanking>();
   for (const t of transactions) {
     if (t.type !== type) continue;
+    if (isDeliveryTransaction(t)) continue;
     const id = t.productId ?? "__no-product__";
     const name = t.productName ?? "(без товару)";
     const existing = map.get(id);

@@ -106,7 +106,7 @@ export function EntityCombobox({
             value={search}
             onValueChange={setSearch}
           />
-          <CommandList>
+          <CommandList className="max-h-(--radix-popover-content-available-height)">
             <CommandEmpty>
               {onCreate && trimmed ? (
                 <button

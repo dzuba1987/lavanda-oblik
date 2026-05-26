@@ -1,14 +1,46 @@
+"use client";
+
+import { useEffect } from "react";
 import Link from "next/link";
-import { Sprout } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function Home() {
+  const router = useRouter();
+  const { loading, authUser } = useAuth();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!authUser) return;
+    // Залогіненого юзера не тримаємо на лендингу — одразу в робочу зону.
+    // На мобільному частіше створюють замовлення → orders, desktop → dashboard.
+    const isMobile =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    router.replace(isMobile ? "/orders/" : "/dashboard/");
+  }, [loading, authUser, router]);
+
+  if (loading || authUser) {
+    return (
+      <main className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+      </main>
+    );
+  }
+
   return (
     <main className="flex flex-1 flex-col items-center justify-center bg-gradient-to-br from-violet-50 via-white to-purple-50 px-6 py-16 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
       <div className="flex max-w-md flex-col items-center text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-lg">
-          <Sprout className="h-9 w-9" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icon-192.png"
+          alt=""
+          width={64}
+          height={64}
+          className="h-16 w-16 rounded-2xl shadow-lg"
+        />
         <h1 className="mt-6 text-4xl font-semibold tracking-tight">
           ЛавандаОблік
         </h1>

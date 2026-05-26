@@ -30,7 +30,14 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && authUser) router.replace("/dashboard/");
+    if (!loading && authUser) {
+      // На мобільному найчастіше створюють замовлення — лендимо одразу туди.
+      // Desktop за замовчуванням стартує з дашборду з графіками.
+      const isMobile =
+        typeof window !== "undefined" &&
+        window.matchMedia("(max-width: 767px)").matches;
+      router.replace(isMobile ? "/orders/" : "/dashboard/");
+    }
   }, [authUser, loading, router]);
 
   const refreshCaptcha = useCallback(() => {
