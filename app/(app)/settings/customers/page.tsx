@@ -185,6 +185,7 @@ function CustomerFormDialog({
   const [age, setAge] = useState("");
   const [source, setSource] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -194,6 +195,7 @@ function CustomerFormDialog({
       setAge(initial?.age != null ? String(initial.age) : "");
       setSource(initial?.source ?? "");
       setPhone(initial?.phone ?? "");
+      setAddress(initial?.address ?? "");
       setNotes(initial?.notes ?? "");
     }
   }, [open, initial]);
@@ -216,6 +218,7 @@ function CustomerFormDialog({
         age: parsedAge,
         source: source.trim() || null,
         phone: phone.trim() || null,
+        address: address.trim() || null,
         notes: notes.trim() || null,
       };
       if (initial) {
@@ -298,6 +301,19 @@ function CustomerFormDialog({
                 ))}
               </datalist>
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="cust-address">Адреса (опц.)</Label>
+            <Input
+              id="cust-address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="м. Київ, вул. Хрещатик, 1, кв. 5"
+            />
+            <p className="text-xs text-muted-foreground">
+              Підставлятиметься як адреса доставки за замовчуванням у нових замовленнях.
+            </p>
           </div>
 
           <div className="space-y-1">

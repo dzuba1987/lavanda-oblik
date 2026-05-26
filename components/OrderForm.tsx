@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, Loader2, Plus, Trash2, X } from "lucide-react";
+import { Camera, Loader2, Navigation, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -28,7 +28,7 @@ import {
   type OrderItem,
   type Product,
 } from "@/lib/data/types";
-import { DELIVERY_LABELS, hasTracking } from "@/lib/utils/delivery";
+import { DELIVERY_LABELS, hasTracking, mapsDirectionsUrl } from "@/lib/utils/delivery";
 import {
   Select,
   SelectContent,
@@ -184,6 +184,15 @@ export function OrderForm({
     const c = allCustomers.find((x) => x.id === customerId);
     if (c?.phone) setPhone(c.phone);
   }, [open, customerId, allCustomers, phone]);
+
+  // Аналогічно для адреси доставки: підставляємо customer.address якщо
+  // користувач ще не ввів свою адресу для цього замовлення.
+  useEffect(() => {
+    if (!open || deliveryAddress) return;
+    if (!customerId) return;
+    const c = allCustomers.find((x) => x.id === customerId);
+    if (c?.address) setDeliveryAddress(c.address);
+  }, [open, customerId, allCustomers, deliveryAddress]);
 
   // Cleanup object URLs on unmount/close
   useEffect(() => {
@@ -642,15 +651,32 @@ export function OrderForm({
               />
             )}
             {deliveryMethod && (
-              <Input
-                value={deliveryAddress}
-                onChange={(e) => setDeliveryAddress(e.target.value)}
-                placeholder={
-                  deliveryMethod === "self_pickup"
-                    ? "Місце або деталі"
-                    : "Адреса або № відділення"
-                }
-              />
+              <>
+                <Input
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  placeholder={
+                    deliveryMethod === "self_pickup"
+                      ? "Місце або деталі"
+                      : "Адреса або № відділення"
+                  }
+                />
+                {deliveryAddress.trim() && deliveryMethod !== "self_pickup" && (() => {
+                  const mapUrl = mapsDirectionsUrl(deliveryAddress);
+                  if (!mapUrl) return null;
+                  return (
+                    <a
+                      href={mapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-violet-600 hover:underline dark:text-violet-400"
+                    >
+                      <Navigation className="h-3 w-3" />
+                      Відкрити маршрут у картах
+                    </a>
+                  );
+                })()}
+              </>
             )}
           </div>
 

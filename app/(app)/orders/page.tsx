@@ -21,8 +21,9 @@ import {
   Truck,
   MessageSquare,
   Phone,
+  Navigation,
 } from "lucide-react";
-import { DELIVERY_LABELS } from "@/lib/utils/delivery";
+import { DELIVERY_LABELS, mapsDirectionsUrl } from "@/lib/utils/delivery";
 import {
   Select,
   SelectContent,
@@ -61,7 +62,7 @@ import {
   listOrders,
   deleteOrder,
   updateOrderStatus,
-  deliverOrder,
+  completeOrder,
 } from "@/lib/data/orders";
 import { categoriesCrud } from "@/lib/data/categories";
 import { productsCrud } from "@/lib/data/products";
@@ -89,7 +90,6 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   confirmed: "Підтверджено",
   in_progress: "В роботі",
   ready: "Готове",
-  delivered: "Виконано",
   cancelled: "Скасовано",
 };
 
@@ -97,8 +97,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   new: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200",
   confirmed: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200",
   in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
-  ready: "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-200",
-  delivered: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
+  ready: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
   cancelled: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
 };
 
@@ -106,8 +105,7 @@ const STATUS_BORDER: Record<OrderStatus, string> = {
   new: "border-l-sky-500",
   confirmed: "border-l-violet-500",
   in_progress: "border-l-amber-500",
-  ready: "border-l-teal-500",
-  delivered: "border-l-emerald-500",
+  ready: "border-l-emerald-500",
   cancelled: "border-l-zinc-400",
 };
 
@@ -116,15 +114,13 @@ const STATUS_ORDER: Record<OrderStatus, number> = {
   in_progress: 1,
   confirmed: 2,
   ready: 3,
-  delivered: 4,
-  cancelled: 5,
+  cancelled: 4,
 };
 
 const ACTIVE_STATUSES: OrderStatus[] = [
   "new",
   "confirmed",
   "in_progress",
-  "ready",
 ];
 
 const DEFAULT_ACTIVE_STATUSES: OrderStatus[] = [
@@ -152,8 +148,8 @@ export default function OrdersPage() {
   const [pendingDelete, setPendingDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const [pendingDeliver, setPendingDeliver] = useState<Order | null>(null);
-  const [delivering, setDelivering] = useState(false);
+  const [pendingComplete, setPendingComplete] = useState<Order | null>(null);
+  const [completing, setCompleting] = useState(false);
 
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
@@ -250,11 +246,12 @@ export default function OrdersPage() {
       confirmed: 0,
       in_progress: 0,
       ready: 0,
-      delivered: 0,
       cancelled: 0,
     };
     for (const o of orders) {
-      c[o.status]++;
+      if (o.status in c) {
+        (c as Record<string, number>)[o.status]++;
+      }
       if (DEFAULT_ACTIVE_STATUSES.includes(o.status)) c.active++;
     }
     return c;
@@ -271,8 +268,8 @@ export default function OrdersPage() {
   }
 
   async function handleStatusChange(o: Order, newStatus: OrderStatus) {
-    if (newStatus === "delivered") {
-      setPendingDeliver(o);
+    if (newStatus === "ready") {
+      setPendingComplete(o);
       return;
     }
     try {
@@ -285,21 +282,21 @@ export default function OrdersPage() {
     }
   }
 
-  async function handleConfirmDeliver() {
-    if (!pendingDeliver || !authUser) return;
-    setDelivering(true);
+  async function handleConfirmComplete() {
+    if (!pendingComplete || !authUser) return;
+    setCompleting(true);
     try {
-      const txIds = await deliverOrder(pendingDeliver, new Date(), authUser.uid);
+      const txIds = await completeOrder(pendingComplete, new Date(), authUser.uid);
       toast.success(
         `Створено ${txIds.length} ${pluralize(txIds.length, "транзакцію", "транзакції", "транзакцій")}`
       );
-      setPendingDeliver(null);
+      setPendingComplete(null);
       reload();
     } catch (e) {
       console.error(e);
-      toast.error("Не вдалось видати замовлення");
+      toast.error("Не вдалось завершити замовлення");
     } finally {
-      setDelivering(false);
+      setCompleting(false);
     }
   }
 
@@ -357,9 +354,6 @@ export default function OrdersPage() {
           </TabsTrigger>
           <TabsTrigger value="ready">
             {STATUS_LABEL.ready}<TabCount n={tabCounts.ready} />
-          </TabsTrigger>
-          <TabsTrigger value="delivered">
-            {STATUS_LABEL.delivered}<TabCount n={tabCounts.delivered} />
           </TabsTrigger>
           <TabsTrigger value="cancelled">
             {STATUS_LABEL.cancelled}<TabCount n={tabCounts.cancelled} />
@@ -432,28 +426,28 @@ export default function OrdersPage() {
       />
 
       <Dialog
-        open={pendingDeliver !== null}
-        onOpenChange={(o) => !o && setPendingDeliver(null)}
+        open={pendingComplete !== null}
+        onOpenChange={(o) => !o && setPendingComplete(null)}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Видати замовлення?</DialogTitle>
+            <DialogTitle>Завершити замовлення?</DialogTitle>
             <DialogDescription>
-              {pendingDeliver && (
+              {pendingComplete && (
                 <>
                   Буде створено{" "}
                   <span className="font-semibold">
-                    {pendingDeliver.items.length}{" "}
+                    {pendingComplete.items.length}{" "}
                     {pluralize(
-                      pendingDeliver.items.length,
+                      pendingComplete.items.length,
                       "транзакцію",
                       "транзакції",
                       "транзакцій"
                     )}{" "}
                     доходу
                   </span>{" "}
-                  на загальну суму {formatMoney(pendingDeliver.totalAmount)}.
-                  Замовлення стане статусом «Виконано».
+                  на загальну суму {formatMoney(pendingComplete.totalAmount)}.
+                  Замовлення стане статусом «Готове».
                 </>
               )}
             </DialogDescription>
@@ -461,18 +455,18 @@ export default function OrdersPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setPendingDeliver(null)}
-              disabled={delivering}
+              onClick={() => setPendingComplete(null)}
+              disabled={completing}
             >
               Скасувати
             </Button>
             <Button
-              onClick={handleConfirmDeliver}
-              disabled={delivering}
+              onClick={handleConfirmComplete}
+              disabled={completing}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {delivering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Видати
+              {completing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Завершити
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -687,13 +681,20 @@ function OrderCard({
             </div>
 
             {order.delivery && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Truck className="h-3 w-3" />
-                <span>{DELIVERY_LABELS[order.delivery.method]}</span>
-                {order.delivery.trackingNumber && (
-                  <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-                    {order.delivery.trackingNumber}
-                  </span>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Truck className="h-3 w-3" />
+                  <span>{DELIVERY_LABELS[order.delivery.method]}</span>
+                  {order.delivery.trackingNumber && (
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+                      {order.delivery.trackingNumber}
+                    </span>
+                  )}
+                </div>
+                {order.delivery.address && (
+                  <div className="line-clamp-1 text-xs text-muted-foreground/80">
+                    {order.delivery.address}
+                  </div>
                 )}
               </div>
             )}
@@ -713,17 +714,36 @@ function OrderCard({
           />
         </div>
 
-        {order.phone && (
-          <a
-            href={`tel:${order.phone.replace(/\s/g, "")}`}
-            onClick={(e) => e.stopPropagation()}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
-            aria-label={`Подзвонити ${order.phone}`}
-          >
-            <Phone className="h-3 w-3" />
-            {order.phone}
-          </a>
-        )}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {order.phone && (
+            <a
+              href={`tel:${order.phone.replace(/\s/g, "")}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
+              aria-label={`Подзвонити ${order.phone}`}
+            >
+              <Phone className="h-3 w-3" />
+              {order.phone}
+            </a>
+          )}
+          {(() => {
+            const mapUrl = mapsDirectionsUrl(order.delivery?.address);
+            if (!mapUrl) return null;
+            return (
+              <a
+                href={mapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
+                aria-label="Відкрити маршрут у Картах"
+              >
+                <Navigation className="h-3 w-3" />
+                Маршрут
+              </a>
+            );
+          })()}
+        </div>
 
         {photos.length > 0 && (
           <div className="mt-2 flex gap-1.5 overflow-x-auto">
@@ -789,15 +809,9 @@ function StatusActions({
                 В роботі
               </DropdownMenuItem>
             )}
-            {order.status !== "ready" && (
-              <DropdownMenuItem onClick={() => onStatusChange("ready")}>
-                <PackageCheck className="mr-2 h-4 w-4 text-teal-600" />
-                Готове
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={() => onStatusChange("delivered")}>
+            <DropdownMenuItem onClick={() => onStatusChange("ready")}>
               <PackageCheck className="mr-2 h-4 w-4 text-emerald-600" />
-              Видано → транзакція
+              Готове → транзакція
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onStatusChange("cancelled")}

@@ -144,15 +144,15 @@ export async function updateOrder(
 
 /**
  * Простий перехід статусу без створення транзакцій.
- * Для переходу в 'delivered' використовуйте deliverOrder.
+ * Для переходу в 'ready' (terminal) використовуйте completeOrder.
  */
 export async function updateOrderStatus(
   id: string,
   status: OrderStatus
 ): Promise<void> {
-  if (status === "delivered") {
+  if (status === "ready") {
     throw new Error(
-      "Для переходу в 'delivered' використовуйте deliverOrder — він створює транзакції"
+      "Для переходу в 'ready' використовуйте completeOrder — він створює транзакції"
     );
   }
   const audit = currentAudit();
@@ -165,17 +165,18 @@ export async function updateOrderStatus(
 }
 
 /**
- * Атомарно переводить замовлення в 'delivered' та створює N транзакцій income
- * (по одній на кожну позицію order.items[]).
+ * Атомарно переводить замовлення в 'ready' (terminal) та створює N транзакцій
+ * income (по одній на кожну позицію order.items[]). Поле deliveredAt
+ * залишилось як історична назва — семантично це "дата завершення".
  * Повертає список ID нових транзакцій.
  */
-export async function deliverOrder(
+export async function completeOrder(
   order: Order,
-  deliveryDate: Date,
+  completionDate: Date,
   uid?: string
 ): Promise<string[]> {
   if (!order.items || order.items.length === 0) {
-    throw new Error("Замовлення без позицій неможливо видати");
+    throw new Error("Замовлення без позицій неможливо завершити");
   }
 
   const audit = currentAudit();
@@ -183,7 +184,7 @@ export async function deliverOrder(
   const createdByName = audit.name;
   const batch = writeBatch(firebase.db);
   const txCollection = collection(firebase.db, "transactions");
-  const txTs = Timestamp.fromDate(deliveryDate);
+  const txTs = Timestamp.fromDate(completionDate);
   const ts = serverTimestamp();
   const newTxIds: string[] = [];
 
@@ -216,7 +217,7 @@ export async function deliverOrder(
   }
 
   batch.update(doc(firebase.db, COLLECTION, order.id), {
-    status: "delivered" as OrderStatus,
+    status: "ready" as OrderStatus,
     deliveredAt: txTs,
     transactionIds: newTxIds,
     updatedBy: createdBy,

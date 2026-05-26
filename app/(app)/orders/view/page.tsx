@@ -8,12 +8,13 @@ import {
   CalendarClock,
   ExternalLink,
   Loader2,
+  Navigation,
   Pencil,
   StickyNote,
   Truck,
   User as UserIcon,
 } from "lucide-react";
-import { DELIVERY_LABELS, trackingUrl } from "@/lib/utils/delivery";
+import { DELIVERY_LABELS, mapsDirectionsUrl, trackingUrl } from "@/lib/utils/delivery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,7 +36,6 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   confirmed: "Підтверджено",
   in_progress: "В роботі",
   ready: "Готове",
-  delivered: "Виконано",
   cancelled: "Скасовано",
 };
 
@@ -43,8 +43,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   new: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200",
   confirmed: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200",
   in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
-  ready: "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-200",
-  delivered: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
+  ready: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
   cancelled: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
 };
 
@@ -137,7 +136,7 @@ function OrderViewInner() {
 function OrderDetails({ order }: { order: Order }) {
   const deadlineDate = tsToDate(order.deadline);
   const createdDate = tsToDate(order.createdAt);
-  const deliveredDate = tsToDate(order.deliveredAt);
+  const completedDate = tsToDate(order.deliveredAt);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   return (
@@ -164,7 +163,7 @@ function OrderDetails({ order }: { order: Order }) {
           {createdDate
             ? `Створено ${formatDateLong(createdDate)}`
             : "Створено —"}
-          {deliveredDate && ` · Видано ${formatDateLong(deliveredDate)}`}
+          {completedDate && ` · Завершено ${formatDateLong(completedDate)}`}
         </p>
       </header>
 
@@ -322,9 +321,28 @@ function DeliveryCard({ delivery }: { delivery: Delivery }) {
           </div>
         )}
         {delivery.address && (
-          <div className="text-sm">
-            <span className="text-muted-foreground">Адреса: </span>
-            {delivery.address}
+          <div className="space-y-2">
+            <div className="text-sm">
+              <span className="text-muted-foreground">Адреса: </span>
+              {delivery.address}
+            </div>
+            {(() => {
+              const mapUrl = mapsDirectionsUrl(delivery.address);
+              if (!mapUrl) return null;
+              return (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                >
+                  <a href={mapUrl} target="_blank" rel="noopener noreferrer">
+                    <Navigation className="h-3.5 w-3.5 text-violet-600" />
+                    Маршрут
+                  </a>
+                </Button>
+              );
+            })()}
           </div>
         )}
       </CardContent>

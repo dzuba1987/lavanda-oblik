@@ -37,3 +37,17 @@ export function trackingUrl(
       return null;
   }
 }
+
+/**
+ * URL для побудови маршруту до адреси через Google Maps. Працює на всіх
+ * платформах: на Android відкриває Google Maps app, на iOS — або Google Maps app
+ * (якщо встановлена) або веб, на desktop — maps.google.com з маршрутом.
+ *
+ * `travelmode=driving` — режим для авто/кур'єра.
+ */
+export function mapsDirectionsUrl(address: string | null | undefined): string | null {
+  if (!address) return null;
+  const trimmed = address.trim();
+  if (!trimmed) return null;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(trimmed)}&travelmode=driving`;
+}

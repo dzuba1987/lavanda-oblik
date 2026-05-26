@@ -63,6 +63,8 @@ skills-lock.json
 /*.ods
 /~$*
 /signup-form.png
+/order-view-from-tx.png
+/*.png
 /data/
 
 # Playwright MCP кеш

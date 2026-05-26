@@ -64,6 +64,14 @@ export interface Customer extends AuditFields {
   source: string | null;
   /** Телефон у вільному форматі — використовується для tel: link. */
   phone: string | null;
+  /**
+   * Звичайна адреса клієнта (вулиця, місто). Використовується як дефолт
+   * для delivery.address у нових замовленнях. Окремих координат не зберігаємо —
+   * навігація відкривається у зовнішніх картах по тексту адреси.
+   *
+   * Optional: старі клієнти створені до фічі не мають цього поля.
+   */
+  address?: string | null;
   notes: string | null;
 }
 
@@ -97,8 +105,8 @@ export type OrderStatus =
   | "new"
   | "confirmed"
   | "in_progress"
+  /** Terminal: при переході сюди створюються транзакції income. */
   | "ready"
-  | "delivered"
   | "cancelled";
 
 export const ORDER_STATUSES: OrderStatus[] = [
@@ -106,15 +114,14 @@ export const ORDER_STATUSES: OrderStatus[] = [
   "confirmed",
   "in_progress",
   "ready",
-  "delivered",
   "cancelled",
 ];
 
+/** Активні (в роботі) — без ready, бо ready тепер закриває замовлення. */
 export const ORDER_ACTIVE_STATUSES: OrderStatus[] = [
   "new",
   "confirmed",
   "in_progress",
-  "ready",
 ];
 
 export interface OrderItem {
