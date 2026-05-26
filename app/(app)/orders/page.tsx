@@ -55,8 +55,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { OrderForm } from "@/components/OrderForm";
+import { PeriodFilter } from "@/components/PeriodFilter";
 import { cn } from "@/lib/utils";
 import { formatMoney, formatDate, tsToDate } from "@/lib/utils/format";
+import { getPeriodRange, type PeriodPreset, type PeriodRange } from "@/lib/utils/period";
 import { useAuth } from "@/lib/auth/AuthContext";
 import {
   listOrders,
@@ -141,6 +143,11 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("status");
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("month");
+  const [customRange, setCustomRange] = useState<PeriodRange>({
+    from: null,
+    to: null,
+  });
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Order | null>(null);
@@ -164,10 +171,18 @@ export default function OrdersPage() {
     setCustomers(custs as Customer[]);
   }
 
+  const range = useMemo(
+    () => getPeriodRange(periodPreset, customRange),
+    [periodPreset, customRange]
+  );
+
   async function reload() {
     setLoading(true);
     try {
-      const rows = await listOrders();
+      const rows = await listOrders({
+        from: range.from ?? undefined,
+        to: range.to ?? undefined,
+      });
       setOrders(rows);
     } catch (e) {
       console.error(e);
@@ -179,8 +194,12 @@ export default function OrdersPage() {
 
   useEffect(() => {
     reloadDicts();
-    reload();
   }, []);
+
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodPreset, customRange.from, customRange.to]);
 
   const filtered = useMemo(() => {
     let list = orders;
@@ -376,6 +395,15 @@ export default function OrdersPage() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
+
+      <PeriodFilter
+        preset={periodPreset}
+        custom={customRange}
+        onChange={(p, c) => {
+          setPeriodPreset(p);
+          setCustomRange(c);
+        }}
+      />
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
@@ -651,29 +679,32 @@ function OrderCard({
 
   return (
     <Card className={cn("relative border-l-4", STATUS_BORDER[order.status])}>
-      <CardContent className="px-4 py-3">
+      <CardContent className="px-4 py-2">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onEdit}
-            className="flex min-w-0 flex-1 flex-col items-start gap-1 text-left"
+            className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
           >
             <div className="flex w-full items-center gap-2">
               <Badge
                 variant="secondary"
-                className={cn("font-normal", STATUS_COLOR[order.status])}
+                className={cn("shrink-0 font-normal", STATUS_COLOR[order.status])}
               >
                 {STATUS_LABEL[order.status]}
               </Badge>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                {order.customerName ?? "(без клієнта)"}
+              </span>
               {isOverdue && (
-                <Badge variant="destructive" className="font-normal">
+                <Badge variant="destructive" className="shrink-0 font-normal">
                   Прострочено
                 </Badge>
               )}
               {deadlineDate && (
                 <span
                   className={cn(
-                    "flex items-center gap-1 text-xs text-muted-foreground",
+                    "flex shrink-0 items-center gap-1 text-xs text-muted-foreground",
                     isOverdue && "text-red-600 dark:text-red-400"
                   )}
                 >
@@ -683,17 +714,13 @@ function OrderCard({
               )}
               {(order.commentsCount ?? 0) > 0 && (
                 <span
-                  className="flex items-center gap-1 text-xs text-violet-600 dark:text-violet-300"
+                  className="flex shrink-0 items-center gap-1 text-xs text-violet-600 dark:text-violet-300"
                   aria-label={`${order.commentsCount} коментарів`}
                 >
                   <MessageSquare className="h-3 w-3" />
                   {order.commentsCount}
                 </span>
               )}
-            </div>
-
-            <div className="text-sm font-medium">
-              {order.customerName ?? "(без клієнта)"}
             </div>
 
             <div className="text-xs text-muted-foreground">
@@ -768,36 +795,38 @@ function OrderCard({
           />
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {order.phone && (
-            <a
-              href={`tel:${order.phone.replace(/\s/g, "")}`}
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
-              aria-label={`Подзвонити ${order.phone}`}
-            >
-              <Phone className="h-3 w-3" />
-              {order.phone}
-            </a>
-          )}
-          {(() => {
-            const mapUrl = mapsDirectionsUrl(order.delivery?.address);
-            if (!mapUrl) return null;
-            return (
-              <a
-                href={mapUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
-                aria-label="Відкрити маршрут у Картах"
-              >
-                <Navigation className="h-3 w-3" />
-                Маршрут
-              </a>
-            );
-          })()}
-        </div>
+        {(() => {
+          const mapUrl = mapsDirectionsUrl(order.delivery?.address);
+          if (!order.phone && !mapUrl) return null;
+          return (
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              {order.phone && (
+                <a
+                  href={`tel:${order.phone.replace(/\s/g, "")}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
+                  aria-label={`Подзвонити ${order.phone}`}
+                >
+                  <Phone className="h-3 w-3" />
+                  {order.phone}
+                </a>
+              )}
+              {mapUrl && (
+                <a
+                  href={mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
+                  aria-label="Відкрити маршрут у Картах"
+                >
+                  <Navigation className="h-3 w-3" />
+                  Маршрут
+                </a>
+              )}
+            </div>
+          );
+        })()}
 
         {photos.length > 0 && (
           <div className="mt-2 flex gap-1.5 overflow-x-auto">
