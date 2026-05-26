@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import Link from "next/link";
+import {
+  Loader2,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  ExternalLink,
+  ShoppingCart,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -359,6 +366,21 @@ export function TransactionForm(props: TransactionFormProps) {
               </TabsTrigger>
             </TabsList>
           </Tabs>
+
+          {initial?.orderId && (
+            <Link
+              href={`/orders/view/?id=${initial.orderId}`}
+              className="flex items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-900 hover:bg-violet-100 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-950/60"
+            >
+              <span className="flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 shrink-0" />
+                Створено з замовлення
+              </span>
+              <span className="flex items-center gap-1 text-xs font-medium">
+                Відкрити <ExternalLink className="h-3.5 w-3.5" />
+              </span>
+            </Link>
+          )}
 
           <div className="space-y-1">
             <Label htmlFor="t-date">Дата</Label>

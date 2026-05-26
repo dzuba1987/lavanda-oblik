@@ -12,7 +12,9 @@ import {
   Trash2,
   MoreVertical,
   Loader2,
+  ShoppingCart,
 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -222,6 +224,16 @@ export default function TransactionsPage() {
       <SummaryCards totals={totals} />
 
       <div className="flex flex-col gap-2">
+        {/* Період — окремий рядок зверху, всі пресети одразу видно */}
+        <PeriodFilter
+          preset={periodPreset}
+          custom={customRange}
+          onChange={(p, c) => {
+            setPeriodPreset(p);
+            setCustomRange(c);
+          }}
+        />
+
         <Tabs
           value={typeFilter}
           onValueChange={(v) => {
@@ -246,26 +258,16 @@ export default function TransactionsPage() {
               className="pl-9"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 md:w-56 md:flex-initial">
-              <EntityCombobox
-                items={filteredCategoriesForFilter.map((c) => ({
-                  id: c.id,
-                  label: c.name,
-                  swatch: c.color,
-                }))}
-                value={categoryFilter}
-                onChange={(id) => setCategoryFilter(id)}
-                placeholder="Усі категорії"
-              />
-            </div>
-            <PeriodFilter
-              preset={periodPreset}
-              custom={customRange}
-              onChange={(p, c) => {
-                setPeriodPreset(p);
-                setCustomRange(c);
-              }}
+          <div className="md:w-56">
+            <EntityCombobox
+              items={filteredCategoriesForFilter.map((c) => ({
+                id: c.id,
+                label: c.name,
+                swatch: c.color,
+              }))}
+              value={categoryFilter}
+              onChange={(id) => setCategoryFilter(id)}
+              placeholder="Усі категорії"
             />
           </div>
         </div>
@@ -451,8 +453,20 @@ function TransactionRow({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">
-            {t.productName ?? t.categoryName}
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-sm font-medium">
+              {t.productName ?? t.categoryName}
+            </span>
+            {t.orderId && (
+              <Link
+                href={`/orders/view/?id=${t.orderId}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex shrink-0 items-center rounded-full bg-violet-100 p-0.5 text-violet-700 hover:bg-violet-200 dark:bg-violet-950/50 dark:text-violet-300"
+                title="Відкрити замовлення"
+              >
+                <ShoppingCart className="h-3 w-3" />
+              </Link>
+            )}
           </div>
           <div className="truncate text-xs text-muted-foreground">
             {t.productName ? t.categoryName : counterparty ?? "—"}
@@ -579,7 +593,12 @@ function groupByDay(items: Transaction[]) {
   for (const t of items) {
     const d = tsToDate(t.date);
     if (!d) continue;
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    // Zero-padded YYYY-MM-DD: лексичне порівняння тепер еквівалентне
+    // хронологічному ("2026-05-23" > "2026-05-05" > "2026-05-03").
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const key = `${y}-${m}-${day}`;
     const label = formatDateLong(d);
     const existing = groups.get(key);
     if (existing) existing.items.push(t);

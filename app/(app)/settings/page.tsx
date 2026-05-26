@@ -71,8 +71,8 @@ const ADMIN_SECTION: Section = {
 
 const DEV_SECTION: Section = {
   href: "/settings/dev/",
-  label: "Розробник",
-  description: "Тестові дані, сід / видалення",
+  label: "Інструменти адміна",
+  description: "Стандартні довідники + dev-сід",
   icon: FlaskConical,
 };
 
@@ -82,7 +82,7 @@ export default function SettingsPage() {
 
   const sections: Section[] = [...BASE_SECTIONS];
   if (isAdmin) sections.push(ADMIN_SECTION);
-  if (process.env.NODE_ENV === "development" && isAdmin) sections.push(DEV_SECTION);
+  if (isAdmin) sections.push(DEV_SECTION);
 
   return (
     <main className="container mx-auto flex flex-1 flex-col gap-6 px-4 py-6">

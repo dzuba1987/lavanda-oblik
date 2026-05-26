@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { useNewOrdersCount } from "@/lib/data/useNewOrdersCount";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -54,6 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 function Sidebar() {
   const pathname = usePathname();
+  const newOrdersCount = useNewOrdersCount();
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-card md:flex">
       <div className="flex h-16 items-center gap-2 border-b px-4">
@@ -72,6 +74,8 @@ function Sidebar() {
         {NAV.map((item) => {
           const Icon = item.icon;
           const active = isActive(pathname, item.href);
+          const showBadge =
+            item.href === "/orders/" && newOrdersCount > 0;
           return (
             <Link
               key={item.href}
@@ -84,7 +88,8 @@ function Sidebar() {
               )}
             >
               <Icon className="h-4 w-4" />
-              {item.label}
+              <span>{item.label}</span>
+              {showBadge && <NewOrdersBadge n={newOrdersCount} />}
             </Link>
           );
         })}
@@ -118,11 +123,14 @@ function MobileHeader() {
 
 function BottomNav() {
   const pathname = usePathname();
+  const newOrdersCount = useNewOrdersCount();
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center border-t bg-card/95 backdrop-blur md:hidden">
       {NAV.map((item) => {
         const Icon = item.icon;
         const active = isActive(pathname, item.href);
+        const showBadge =
+          item.href === "/orders/" && newOrdersCount > 0;
         return (
           <Link
             key={item.href}
@@ -134,7 +142,14 @@ function BottomNav() {
                 : "text-muted-foreground"
             )}
           >
-            <Icon className={cn("h-5 w-5", active && "scale-110 transition-transform")} />
+            <span className="relative">
+              <Icon className={cn("h-5 w-5", active && "scale-110 transition-transform")} />
+              {showBadge && (
+                <span className="absolute -right-2 -top-1.5">
+                  <NewOrdersBadge n={newOrdersCount} compact />
+                </span>
+              )}
+            </span>
             <span className="max-w-full truncate">
               {item.shortLabel ?? item.label}
             </span>
@@ -142,6 +157,30 @@ function BottomNav() {
         );
       })}
     </nav>
+  );
+}
+
+function NewOrdersBadge({ n, compact }: { n: number; compact?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "relative inline-flex",
+        compact ? "" : "ml-auto"
+      )}
+      aria-label={`${n} нових замовлень`}
+    >
+      <span className="absolute inset-0 animate-ping rounded-full bg-red-500 opacity-70" />
+      <span
+        className={cn(
+          "relative inline-flex items-center justify-center rounded-full bg-red-500 font-semibold tabular-nums text-white shadow",
+          compact
+            ? "h-4 min-w-[1rem] px-1 text-[10px]"
+            : "h-5 min-w-[1.25rem] px-1.5 text-[11px]"
+        )}
+      >
+        {n}
+      </span>
+    </span>
   );
 }
 

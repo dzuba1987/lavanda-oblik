@@ -2,22 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Sparkles, Trash2 } from "lucide-react";
+import { BookText, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { removeSeedData, seedTestData } from "@/lib/data/seed";
+import { applyDictionaries } from "@/lib/data/dictionaries";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
 export default function DevSettingsPage() {
   const router = useRouter();
   const { authUser, userDoc, loading } = useAuth();
-  const [busy, setBusy] = useState<"seed" | "remove" | null>(null);
+  const [busy, setBusy] = useState<"seed" | "remove" | "dict" | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
 
-  const allowed = IS_DEV && userDoc?.role === "admin";
+  // Сторінка для адмінів. Тестові дані доступні тільки в dev,
+  // але стандартні довідники — production-safe upsert.
+  const allowed = userDoc?.role === "admin";
 
   useEffect(() => {
     if (!loading && !allowed) router.replace("/settings/");
@@ -48,6 +51,24 @@ export default function DevSettingsPage() {
     }
   }
 
+  async function handleApplyDictionaries() {
+    setBusy("dict");
+    setLastResult(null);
+    try {
+      const r = await applyDictionaries();
+      const msg =
+        `Категорії: додано ${r.categoriesAdded}, пропущено ${r.categoriesSkipped}. ` +
+        `Товари: додано ${r.productsAdded}, пропущено ${r.productsSkipped}.`;
+      setLastResult(msg);
+      toast.success("Довідники оновлено");
+    } catch (e) {
+      const err = e as { message?: string };
+      toast.error(err?.message ?? "Помилка під час оновлення");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function handleRemove() {
     if (!confirm("Видалити всі записи з прапором seed: true? Це не зачепить реальних даних.")) return;
     setBusy("remove");
@@ -70,10 +91,41 @@ export default function DevSettingsPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Розробник</h1>
         <p className="text-sm text-muted-foreground">
-          Інструменти для перегляду функціоналу. Доступно тільки в dev-режимі.
+          Інструменти для адмінів. Стандартні довідники — production-safe;
+          секція з тестовими даними доступна лише в dev-режимі.
         </p>
       </header>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Стандартні довідники Лаванди</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Завантажує реальний словник з обліку: <b>8 категорій-доходів</b>,
+            <b> 36 категорій-витрат</b> і <b>24 товари/послуги</b>. Дублі за
+            назвою пропускаються — кнопку можна тиснути багато разів.
+            Стартові ціни товарів — <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">null</code>,
+            бо у Словнику цін немає; задавати окремо за потреби.
+          </p>
+
+          <Button
+            onClick={handleApplyDictionaries}
+            disabled={busy !== null}
+            className="bg-violet-600 hover:bg-violet-700"
+          >
+            {busy === "dict" ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <BookText className="mr-2 h-4 w-4" />
+            )}
+            Завантажити стандартні довідники
+          </Button>
+        </CardContent>
+      </Card>
+
+      {IS_DEV ? (
+        <>
       <Card>
         <CardHeader>
           <CardTitle>Тестові дані</CardTitle>
@@ -113,14 +165,16 @@ export default function DevSettingsPage() {
               Видалити тестові дані
             </Button>
           </div>
-
-          {lastResult && (
-            <div className="rounded-md border bg-muted/50 p-3 text-sm">
-              {lastResult}
-            </div>
-          )}
         </CardContent>
       </Card>
+        </>
+      ) : null}
+
+      {lastResult && (
+        <div className="rounded-md border bg-muted/50 p-3 text-sm">
+          {lastResult}
+        </div>
+      )}
     </main>
   );
 }

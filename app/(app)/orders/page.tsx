@@ -19,6 +19,8 @@ import {
   Clock3,
   PackageOpen,
   Truck,
+  MessageSquare,
+  Phone,
 } from "lucide-react";
 import { DELIVERY_LABELS } from "@/lib/utils/delivery";
 import {
@@ -73,9 +75,10 @@ import type {
 } from "@/lib/data/types";
 
 type StatusFilter = "all" | "active" | OrderStatus;
-type SortBy = "newest" | "deadline_asc" | "deadline_desc";
+type SortBy = "status" | "newest" | "deadline_asc" | "deadline_desc";
 
 const SORT_LABEL: Record<SortBy, string> = {
+  status: "За статусом (нові згори)",
   newest: "Спочатку нові",
   deadline_asc: "Дата доставки: найближчі",
   deadline_desc: "Дата доставки: найпізніші",
@@ -99,11 +102,35 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   cancelled: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
 };
 
+const STATUS_BORDER: Record<OrderStatus, string> = {
+  new: "border-l-sky-500",
+  confirmed: "border-l-violet-500",
+  in_progress: "border-l-amber-500",
+  ready: "border-l-teal-500",
+  delivered: "border-l-emerald-500",
+  cancelled: "border-l-zinc-400",
+};
+
+const STATUS_ORDER: Record<OrderStatus, number> = {
+  new: 0,
+  in_progress: 1,
+  confirmed: 2,
+  ready: 3,
+  delivered: 4,
+  cancelled: 5,
+};
+
 const ACTIVE_STATUSES: OrderStatus[] = [
   "new",
   "confirmed",
   "in_progress",
   "ready",
+];
+
+const DEFAULT_ACTIVE_STATUSES: OrderStatus[] = [
+  "new",
+  "confirmed",
+  "in_progress",
 ];
 
 export default function OrdersPage() {
@@ -117,7 +144,7 @@ export default function OrdersPage() {
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortBy>("newest");
+  const [sortBy, setSortBy] = useState<SortBy>("status");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Order | null>(null);
@@ -162,7 +189,7 @@ export default function OrdersPage() {
   const filtered = useMemo(() => {
     let list = orders;
     if (statusFilter === "active") {
-      list = list.filter((o) => ACTIVE_STATUSES.includes(o.status));
+      list = list.filter((o) => DEFAULT_ACTIVE_STATUSES.includes(o.status));
     } else if (statusFilter !== "all") {
       list = list.filter((o) => o.status === statusFilter);
     }
@@ -174,7 +201,17 @@ export default function OrdersPage() {
           .includes(q)
       );
     }
-    if (sortBy === "deadline_asc" || sortBy === "deadline_desc") {
+    if (sortBy === "status") {
+      // Спершу за пріоритетом статусу, далі за датою створення (новіші згори).
+      list = [...list].sort((a, b) => {
+        const sa = STATUS_ORDER[a.status];
+        const sb = STATUS_ORDER[b.status];
+        if (sa !== sb) return sa - sb;
+        const ad = tsToDate(a.createdAt)?.getTime() ?? 0;
+        const bd = tsToDate(b.createdAt)?.getTime() ?? 0;
+        return bd - ad;
+      });
+    } else if (sortBy === "deadline_asc" || sortBy === "deadline_desc") {
       const dir = sortBy === "deadline_asc" ? 1 : -1;
       // Без deadline — завжди в кінці, незалежно від напрямку.
       list = [...list].sort((a, b) => {
@@ -203,6 +240,24 @@ export default function OrdersPage() {
       }
     }
     return { activeCount, activeSum, overdueCount };
+  }, [orders]);
+
+  const tabCounts = useMemo(() => {
+    const c = {
+      all: orders.length,
+      active: 0,
+      new: 0,
+      confirmed: 0,
+      in_progress: 0,
+      ready: 0,
+      delivered: 0,
+      cancelled: 0,
+    };
+    for (const o of orders) {
+      c[o.status]++;
+      if (DEFAULT_ACTIVE_STATUSES.includes(o.status)) c.active++;
+    }
+    return c;
   }, [orders]);
 
   function openCreate() {
@@ -291,13 +346,27 @@ export default function OrdersPage() {
         onValueChange={(v) => setStatusFilter(v as StatusFilter)}
       >
         <TabsList className="flex w-full flex-wrap justify-start">
-          <TabsTrigger value="active">Активні</TabsTrigger>
-          <TabsTrigger value="new">{STATUS_LABEL.new}</TabsTrigger>
-          <TabsTrigger value="in_progress">{STATUS_LABEL.in_progress}</TabsTrigger>
-          <TabsTrigger value="ready">{STATUS_LABEL.ready}</TabsTrigger>
-          <TabsTrigger value="delivered">{STATUS_LABEL.delivered}</TabsTrigger>
-          <TabsTrigger value="cancelled">{STATUS_LABEL.cancelled}</TabsTrigger>
-          <TabsTrigger value="all">Усі</TabsTrigger>
+          <TabsTrigger value="active">
+            Активні<TabCount n={tabCounts.active} />
+          </TabsTrigger>
+          <TabsTrigger value="new">
+            {STATUS_LABEL.new}<TabCount n={tabCounts.new} />
+          </TabsTrigger>
+          <TabsTrigger value="in_progress">
+            {STATUS_LABEL.in_progress}<TabCount n={tabCounts.in_progress} />
+          </TabsTrigger>
+          <TabsTrigger value="ready">
+            {STATUS_LABEL.ready}<TabCount n={tabCounts.ready} />
+          </TabsTrigger>
+          <TabsTrigger value="delivered">
+            {STATUS_LABEL.delivered}<TabCount n={tabCounts.delivered} />
+          </TabsTrigger>
+          <TabsTrigger value="cancelled">
+            {STATUS_LABEL.cancelled}<TabCount n={tabCounts.cancelled} />
+          </TabsTrigger>
+          <TabsTrigger value="all">
+            Усі<TabCount n={tabCounts.all} />
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -317,6 +386,7 @@ export default function OrdersPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="status">{SORT_LABEL.status}</SelectItem>
             <SelectItem value="newest">{SORT_LABEL.newest}</SelectItem>
             <SelectItem value="deadline_asc">
               {SORT_LABEL.deadline_asc}
@@ -554,7 +624,7 @@ function OrderCard({
   const photos = order.photos ?? [];
 
   return (
-    <Card>
+    <Card className={cn("border-l-4", STATUS_BORDER[order.status])}>
       <CardContent className="px-4 py-3">
         <div className="flex items-start gap-3">
           <button
@@ -583,6 +653,15 @@ function OrderCard({
                 >
                   <CalendarClock className="h-3 w-3" />
                   {formatDate(deadlineDate)}
+                </span>
+              )}
+              {(order.commentsCount ?? 0) > 0 && (
+                <span
+                  className="flex items-center gap-1 text-xs text-violet-600 dark:text-violet-300"
+                  aria-label={`${order.commentsCount} коментарів`}
+                >
+                  <MessageSquare className="h-3 w-3" />
+                  {order.commentsCount}
                 </span>
               )}
             </div>
@@ -633,6 +712,18 @@ function OrderCard({
             onDelete={onDelete}
           />
         </div>
+
+        {order.phone && (
+          <a
+            href={`tel:${order.phone.replace(/\s/g, "")}`}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
+            aria-label={`Подзвонити ${order.phone}`}
+          >
+            <Phone className="h-3 w-3" />
+            {order.phone}
+          </a>
+        )}
 
         {photos.length > 0 && (
           <div className="mt-2 flex gap-1.5 overflow-x-auto">
@@ -726,6 +817,15 @@ function StatusActions({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function TabCount({ n }: { n: number }) {
+  if (n === 0) return null;
+  return (
+    <span className="ml-1.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-violet-600 px-1.5 text-[11px] font-semibold tabular-nums text-white shadow-sm dark:bg-violet-500">
+      {n}
+    </span>
   );
 }
 
