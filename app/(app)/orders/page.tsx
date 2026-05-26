@@ -14,7 +14,6 @@ import {
   ArrowUpDown,
   CalendarClock,
   CheckCircle2,
-  CircleSlash,
   PackageCheck,
   Clock3,
   PackageOpen,
@@ -93,7 +92,6 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   confirmed: "Підтверджено",
   in_progress: "В роботі",
   ready: "Готове",
-  cancelled: "Скасовано",
 };
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
@@ -101,7 +99,6 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   confirmed: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200",
   in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
   ready: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
-  cancelled: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
 };
 
 const STATUS_BORDER: Record<OrderStatus, string> = {
@@ -109,7 +106,6 @@ const STATUS_BORDER: Record<OrderStatus, string> = {
   confirmed: "border-l-violet-500",
   in_progress: "border-l-amber-500",
   ready: "border-l-emerald-500",
-  cancelled: "border-l-zinc-400",
 };
 
 const STATUS_ORDER: Record<OrderStatus, number> = {
@@ -117,7 +113,6 @@ const STATUS_ORDER: Record<OrderStatus, number> = {
   in_progress: 1,
   confirmed: 2,
   ready: 3,
-  cancelled: 4,
 };
 
 const ACTIVE_STATUSES: OrderStatus[] = [
@@ -269,7 +264,6 @@ export default function OrdersPage() {
       confirmed: 0,
       in_progress: 0,
       ready: 0,
-      cancelled: 0,
     };
     for (const o of orders) {
       if (o.status in c) {
@@ -405,9 +399,6 @@ export default function OrdersPage() {
           </TabsTrigger>
           <TabsTrigger value="ready">
             {STATUS_LABEL.ready}<TabCount n={tabCounts.ready} />
-          </TabsTrigger>
-          <TabsTrigger value="cancelled">
-            {STATUS_LABEL.cancelled}<TabCount n={tabCounts.cancelled} />
           </TabsTrigger>
           <TabsTrigger value="all">
             Усі<TabCount n={tabCounts.all} />
@@ -932,15 +923,6 @@ function StatusActions({
           <DropdownMenuItem onClick={() => onStatusChange("ready")}>
             <PackageCheck className="mr-2 h-4 w-4 text-emerald-600" />
             {hasTransactions ? "Готове" : "Готове → транзакція"}
-          </DropdownMenuItem>
-        )}
-        {order.status !== "cancelled" && (
-          <DropdownMenuItem
-            onClick={() => onStatusChange("cancelled")}
-            variant="destructive"
-          >
-            <CircleSlash className="mr-2 h-4 w-4" />
-            Скасувати
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />

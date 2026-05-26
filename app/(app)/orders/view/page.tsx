@@ -36,7 +36,6 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   confirmed: "Підтверджено",
   in_progress: "В роботі",
   ready: "Готове",
-  cancelled: "Скасовано",
 };
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
@@ -44,7 +43,6 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   confirmed: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200",
   in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
   ready: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
-  cancelled: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
 };
 
 export default function OrderViewPage() {

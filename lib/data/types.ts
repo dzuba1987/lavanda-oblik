@@ -110,15 +110,13 @@ export type OrderStatus =
   | "confirmed"
   | "in_progress"
   /** Terminal: при переході сюди створюються транзакції income. */
-  | "ready"
-  | "cancelled";
+  | "ready";
 
 export const ORDER_STATUSES: OrderStatus[] = [
   "new",
   "confirmed",
   "in_progress",
   "ready",
-  "cancelled",
 ];
 
 /** Активні (в роботі) — без ready, бо ready тепер закриває замовлення. */

@@ -408,14 +408,6 @@ async function seedOrders(
       notes: "ПРОСТРОЧЕНО — клієнт не забрав",
       createdDaysAgo: 14,
     },
-    {
-      customerName: "Оксана",
-      status: "cancelled",
-      deadlineOffsetDays: 10,
-      items: [{ product: "Саджанець лаванди", qty: 50, price: 70 }],
-      notes: "Клієнт скасував",
-      createdDaysAgo: 9,
-    },
   ];
 
   let batch = writeBatch(db);
