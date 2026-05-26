@@ -10,6 +10,7 @@ import {
   ChevronRight,
   FlaskConical,
   UserCog,
+  BellRing,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +53,12 @@ const BASE_SECTIONS: Section[] = [
     label: "Імпорт з Excel",
     description: "Завантажити .xlsx з історією",
     icon: Upload,
+  },
+  {
+    href: "/settings/notifications/",
+    label: "Сповіщення",
+    description: "Telegram-бот для замовлень і нових юзерів",
+    icon: BellRing,
   },
 ];
 

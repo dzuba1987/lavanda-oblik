@@ -11,13 +11,23 @@ import {
   MoreVertical,
   Loader2,
   AlertTriangle,
+  ArrowUpDown,
   CalendarClock,
   CheckCircle2,
   CircleSlash,
   PackageCheck,
   Clock3,
   PackageOpen,
+  Truck,
 } from "lucide-react";
+import { DELIVERY_LABELS } from "@/lib/utils/delivery";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +73,13 @@ import type {
 } from "@/lib/data/types";
 
 type StatusFilter = "all" | "active" | OrderStatus;
+type SortBy = "newest" | "deadline_asc" | "deadline_desc";
+
+const SORT_LABEL: Record<SortBy, string> = {
+  newest: "Спочатку нові",
+  deadline_asc: "Дата доставки: найближчі",
+  deadline_desc: "Дата доставки: найпізніші",
+};
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   new: "Нове",
@@ -100,6 +117,7 @@ export default function OrdersPage() {
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortBy>("newest");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Order | null>(null);
@@ -109,6 +127,8 @@ export default function OrdersPage() {
 
   const [pendingDeliver, setPendingDeliver] = useState<Order | null>(null);
   const [delivering, setDelivering] = useState(false);
+
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   async function reloadDicts() {
     const [cats, prods, custs] = await Promise.all([
@@ -154,8 +174,20 @@ export default function OrdersPage() {
           .includes(q)
       );
     }
+    if (sortBy === "deadline_asc" || sortBy === "deadline_desc") {
+      const dir = sortBy === "deadline_asc" ? 1 : -1;
+      // Без deadline — завжди в кінці, незалежно від напрямку.
+      list = [...list].sort((a, b) => {
+        const ad = tsToDate(a.deadline)?.getTime() ?? null;
+        const bd = tsToDate(b.deadline)?.getTime() ?? null;
+        if (ad === null && bd === null) return 0;
+        if (ad === null) return 1;
+        if (bd === null) return -1;
+        return (ad - bd) * dir;
+      });
+    }
     return list;
-  }, [orders, statusFilter, search]);
+  }, [orders, statusFilter, search, sortBy]);
 
   const kpi = useMemo(() => {
     const now = new Date();
@@ -269,14 +301,31 @@ export default function OrdersPage() {
         </TabsList>
       </Tabs>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Пошук по клієнту, товару, нотатці…"
-          className="pl-9"
-        />
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Пошук по клієнту, товару, нотатці…"
+            className="pl-9"
+          />
+        </div>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+          <SelectTrigger className="sm:w-[220px]">
+            <ArrowUpDown className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">{SORT_LABEL.newest}</SelectItem>
+            <SelectItem value="deadline_asc">
+              {SORT_LABEL.deadline_asc}
+            </SelectItem>
+            <SelectItem value="deadline_desc">
+              {SORT_LABEL.deadline_desc}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (
@@ -292,6 +341,7 @@ export default function OrdersPage() {
               onEdit={() => openEdit(o)}
               onDelete={() => setPendingDelete(o)}
               onStatusChange={(s) => handleStatusChange(o, s)}
+              onPhotoClick={setLightboxSrc}
             />
           ))}
         </div>
@@ -355,6 +405,32 @@ export default function OrdersPage() {
               Видати
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={lightboxSrc !== null}
+        onOpenChange={(o) => !o && setLightboxSrc(null)}
+      >
+        <DialogContent
+          showCloseButton
+          className="max-h-[95vh] max-w-[95vw] border-0 bg-transparent p-0 shadow-none sm:max-w-3xl"
+        >
+          <DialogTitle className="sr-only">Перегляд фото</DialogTitle>
+          {lightboxSrc && (
+            <button
+              type="button"
+              onClick={() => setLightboxSrc(null)}
+              className="block w-full"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightboxSrc}
+                alt="Фото замовлення"
+                className="max-h-[95vh] w-full rounded-md object-contain"
+              />
+            </button>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -460,11 +536,13 @@ function OrderCard({
   onEdit,
   onDelete,
   onStatusChange,
+  onPhotoClick,
 }: {
   order: Order;
   onEdit: () => void;
   onDelete: () => void;
   onStatusChange: (s: OrderStatus) => void;
+  onPhotoClick: (src: string) => void;
 }) {
   const firstItem = order.items[0];
   const restCount = order.items.length - 1;
@@ -473,6 +551,7 @@ function OrderCard({
     deadlineDate &&
     deadlineDate < new Date() &&
     ACTIVE_STATUSES.includes(order.status);
+  const photos = order.photos ?? [];
 
   return (
     <Card>
@@ -528,6 +607,18 @@ function OrderCard({
               </span>
             </div>
 
+            {order.delivery && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Truck className="h-3 w-3" />
+                <span>{DELIVERY_LABELS[order.delivery.method]}</span>
+                {order.delivery.trackingNumber && (
+                  <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+                    {order.delivery.trackingNumber}
+                  </span>
+                )}
+              </div>
+            )}
+
             {order.notes && (
               <div className="line-clamp-1 text-xs text-muted-foreground/80">
                 {order.notes}
@@ -542,6 +633,28 @@ function OrderCard({
             onDelete={onDelete}
           />
         </div>
+
+        {photos.length > 0 && (
+          <div className="mt-2 flex gap-1.5 overflow-x-auto">
+            {photos.map((src, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onPhotoClick(src)}
+                className="h-14 w-14 shrink-0 overflow-hidden rounded-md border bg-muted transition-opacity hover:opacity-80"
+                aria-label={`Фото ${i + 1} з ${photos.length}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </button>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

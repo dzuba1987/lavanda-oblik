@@ -14,6 +14,7 @@ import {
 import type { User } from "firebase/auth";
 import { firebase } from "@/lib/firebase/client";
 import type { Role, UserDoc } from "./types";
+import { notifyNewUser } from "@/lib/notify/telegram";
 
 const USERS = "users";
 
@@ -65,5 +66,15 @@ export async function ensureUserDoc(authUser: User): Promise<UserDoc> {
   await setDoc(doc(firebase.db, USERS, authUser.uid), payload);
   const fresh = await getUserDoc(authUser.uid);
   if (!fresh) throw new Error("Не вдалось створити запис користувача");
+
+  // Перший адмін системи сам себе підтверджує — сповіщати нікого.
+  if (role !== "admin") {
+    notifyNewUser({
+      uid: fresh.uid,
+      name: fresh.name,
+      email: fresh.email,
+    }).catch((e) => console.warn("notifyNewUser failed", e));
+  }
+
   return fresh;
 }

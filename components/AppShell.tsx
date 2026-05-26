@@ -8,7 +8,6 @@ import {
   ClipboardList,
   BarChart3,
   Settings,
-  Sprout,
   LogOut,
   User as UserIcon,
 } from "lucide-react";
@@ -58,9 +57,14 @@ function Sidebar() {
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-card md:flex">
       <div className="flex h-16 items-center gap-2 border-b px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-white">
-          <Sprout className="h-5 w-5" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icon-192.png"
+          alt=""
+          width={32}
+          height={32}
+          className="h-8 w-8 rounded-lg"
+        />
         <span className="font-semibold tracking-tight">ЛавандаОблік</span>
       </div>
 
@@ -97,9 +101,14 @@ function MobileHeader() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-card/95 px-4 backdrop-blur md:hidden">
       <div className="flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-violet-600 text-white">
-          <Sprout className="h-4 w-4" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icon-192.png"
+          alt=""
+          width={28}
+          height={28}
+          className="h-7 w-7 rounded-md"
+        />
         <span className="font-semibold tracking-tight">ЛавандаОблік</span>
       </div>
       <ProfileMenu align="end" compact />

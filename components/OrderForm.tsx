@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Camera, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -10,27 +10,51 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { OrderComments } from "@/components/OrderComments";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { EntityCombobox, type ComboItem } from "@/components/EntityCombobox";
 import { formatMoney, toInputDate, fromInputDate, tsToDate } from "@/lib/utils/format";
-import type {
-  Category,
-  Customer,
-  Order,
-  OrderItem,
-  Product,
+import {
+  ORDER_PHOTOS_MAX,
+  DELIVERY_METHODS,
+  type Category,
+  type Customer,
+  type DeliveryMethod,
+  type Order,
+  type OrderItem,
+  type Product,
 } from "@/lib/data/types";
+import { DELIVERY_LABELS, hasTracking } from "@/lib/utils/delivery";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   createOrder,
+  newOrderId,
   updateOrder,
   type OrderInput,
 } from "@/lib/data/orders";
+import { imageToBase64Jpeg } from "@/lib/utils/image";
 import { categoriesCrud } from "@/lib/data/categories";
 import { productsCrud } from "@/lib/data/products";
 import { customersCrud } from "@/lib/data/customers";
+import { useAuth } from "@/lib/auth/AuthContext";
+
+/**
+ * saved   — фото з документа (готовий data URL)
+ * pending — щойно вибраний файл, ще не сконвертований в base64.
+ *           previewUrl = blob: URL для попереднього перегляду.
+ */
+type PhotoSlot =
+  | { kind: "saved"; dataUrl: string }
+  | { kind: "pending"; id: string; file: File; previewUrl: string };
 
 type ItemRow = {
   id: string;
@@ -65,11 +89,23 @@ export function OrderForm({
   onSaved,
   onDictChanged,
 }: OrderFormProps) {
+  const { authUser, userDoc } = useAuth();
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [items, setItems] = useState<ItemRow[]>([]);
   const [deadline, setDeadline] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>([]);
+  const newOrderIdRef = useRef<string>("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // "" в селекті — без доставки
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod | "">("");
+  const [deliveryTracking, setDeliveryTracking] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const [localCategories, setLocalCategories] = useState<Category[]>([]);
   const [localProducts, setLocalProducts] = useState<Product[]>([]);
@@ -108,16 +144,71 @@ export function OrderForm({
       );
       setDeadline(toInputDate(tsToDate(initial.deadline)));
       setNotes(initial.notes ?? "");
+      setPhotoSlots(
+        (initial.photos ?? []).map((dataUrl) => ({ kind: "saved", dataUrl }))
+      );
+      setDeliveryMethod(initial.delivery?.method ?? "");
+      setDeliveryTracking(initial.delivery?.trackingNumber ?? "");
+      setDeliveryAddress(initial.delivery?.address ?? "");
+      newOrderIdRef.current = initial.id;
     } else {
       setCustomerId(null);
       setItems([emptyItem()]);
       setDeadline("");
       setNotes("");
+      setPhotoSlots([]);
+      setDeliveryMethod("");
+      setDeliveryTracking("");
+      setDeliveryAddress("");
+      newOrderIdRef.current = newOrderId();
     }
     setLocalCategories([]);
     setLocalProducts([]);
     setLocalCustomers([]);
   }, [open, initial]);
+
+  // Cleanup object URLs on unmount/close
+  useEffect(() => {
+    if (open) return;
+    photoSlots.forEach((s) => {
+      if (s.kind === "pending") URL.revokeObjectURL(s.previewUrl);
+    });
+  }, [open, photoSlots]);
+
+  function handlePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    const free = ORDER_PHOTOS_MAX - photoSlots.length;
+    const taken = files.slice(0, free);
+    if (files.length > free) {
+      toast.warning(
+        `Можна додати максимум ${ORDER_PHOTOS_MAX} фото на замовлення`
+      );
+    }
+    const next: PhotoSlot[] = taken.map((file) => ({
+      kind: "pending",
+      id: Math.random().toString(36).slice(2),
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    setPhotoSlots((prev) => [...prev, ...next]);
+  }
+
+  function removePhotoSlot(slot: PhotoSlot) {
+    if (slot.kind === "saved") {
+      setPhotoSlots((prev) =>
+        prev.filter(
+          (s) => !(s.kind === "saved" && s.dataUrl === slot.dataUrl)
+        )
+      );
+    } else {
+      URL.revokeObjectURL(slot.previewUrl);
+      setPhotoSlots((prev) =>
+        prev.filter((s) => !(s.kind === "pending" && s.id === slot.id))
+      );
+    }
+  }
 
   const total = useMemo(() => {
     return items.reduce((acc, it) => {
@@ -288,37 +379,73 @@ export function OrderForm({
     }
 
     const dl = deadline ? fromInputDate(deadline) : null;
-
-    const input: OrderInput = {
-      customerId,
-      customerName: customer?.name ?? null,
-      items: validatedItems,
-      totalAmount: validatedItems.reduce((acc, it) => acc + it.totalAmount, 0),
-      deadline: dl,
-      status: initial?.status ?? "new",
-      notes: notes.trim() || null,
-    };
+    const orderId = newOrderIdRef.current;
 
     setSaving(true);
     try {
+      const photos: string[] = [];
+      for (const slot of photoSlots) {
+        if (slot.kind === "saved") {
+          photos.push(slot.dataUrl);
+        } else {
+          photos.push(await imageToBase64Jpeg(slot.file));
+        }
+      }
+
+      const delivery = deliveryMethod
+        ? {
+            method: deliveryMethod,
+            trackingNumber: hasTracking(deliveryMethod)
+              ? deliveryTracking.trim() || null
+              : null,
+            address: deliveryAddress.trim() || null,
+          }
+        : null;
+
+      const input: OrderInput = {
+        customerId,
+        customerName: customer?.name ?? null,
+        items: validatedItems,
+        totalAmount: validatedItems.reduce(
+          (acc, it) => acc + it.totalAmount,
+          0
+        ),
+        deadline: dl,
+        status: initial?.status ?? "new",
+        notes: notes.trim() || null,
+        photos,
+        delivery,
+      };
+
       if (initial) {
         await updateOrder(initial.id, input);
         toast.success("Замовлення оновлено");
       } else {
-        await createOrder(input, uid);
+        const createdByName =
+          userDoc?.name || authUser?.displayName || authUser?.email || null;
+        await createOrder(orderId, input, uid, createdByName);
         toast.success("Замовлення створено");
       }
+
       onSaved();
       onOpenChange(false);
     } catch (e) {
       console.error(e);
-      toast.error("Не вдалось зберегти");
+      const err = e as { code?: string; message?: string };
+      if (err?.code === "resource-exhausted" || err?.message?.includes("exceeds")) {
+        toast.error(
+          "Фото занадто великі. Спробуйте видалити частину або вибрати інші."
+        );
+      } else {
+        toast.error("Не вдалось зберегти");
+      }
     } finally {
       setSaving(false);
     }
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
@@ -446,6 +573,116 @@ export function OrderForm({
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label>Доставка (опц.)</Label>
+            <Select
+              value={deliveryMethod || "none"}
+              onValueChange={(v) =>
+                setDeliveryMethod(v === "none" ? "" : (v as DeliveryMethod))
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Не вказано</SelectItem>
+                {DELIVERY_METHODS.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {DELIVERY_LABELS[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {deliveryMethod && hasTracking(deliveryMethod) && (
+              <Input
+                value={deliveryTracking}
+                onChange={(e) => setDeliveryTracking(e.target.value)}
+                placeholder="ТТН / номер відправлення"
+                inputMode="numeric"
+              />
+            )}
+            {deliveryMethod && (
+              <Input
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+                placeholder={
+                  deliveryMethod === "self_pickup"
+                    ? "Місце або деталі"
+                    : "Адреса або № відділення"
+                }
+              />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Фото (опц.)</Label>
+              <span className="text-xs text-muted-foreground">
+                {photoSlots.length}/{ORDER_PHOTOS_MAX}
+              </span>
+            </div>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoPick}
+            />
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {photoSlots.map((slot, idx) => {
+                const src =
+                  slot.kind === "saved" ? slot.dataUrl : slot.previewUrl;
+                const key =
+                  slot.kind === "saved" ? `s-${idx}` : `p-${slot.id}`;
+                return (
+                  <div
+                    key={key}
+                    className="group relative aspect-square overflow-hidden rounded-md border bg-muted"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setLightboxSrc(src)}
+                      className="block h-full w-full"
+                      aria-label={`Збільшити фото ${idx + 1}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt={`Фото ${idx + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                    {slot.kind === "pending" && (
+                      <span className="pointer-events-none absolute left-1 top-1 rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                        Нове
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removePhotoSlot(slot)}
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+                      aria-label="Видалити фото"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+              {photoSlots.length < ORDER_PHOTOS_MAX && (
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed text-muted-foreground transition-colors hover:border-violet-500 hover:text-violet-600"
+                >
+                  <Camera className="h-5 w-5" />
+                  <span className="text-[11px]">Додати</span>
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-1">
             <Label htmlFor="order-notes">Нотатки (опц.)</Label>
             <Textarea
@@ -455,6 +692,8 @@ export function OrderForm({
               rows={2}
             />
           </div>
+
+          {initial && <OrderComments orderId={initial.id} />}
         </div>
 
         <DialogFooter>
@@ -476,6 +715,33 @@ export function OrderForm({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog
+      open={lightboxSrc !== null}
+      onOpenChange={(o) => !o && setLightboxSrc(null)}
+    >
+      <DialogContent
+        showCloseButton
+        className="max-h-[95vh] max-w-[95vw] border-0 bg-transparent p-0 shadow-none sm:max-w-3xl"
+      >
+        <DialogTitle className="sr-only">Перегляд фото</DialogTitle>
+        {lightboxSrc && (
+          <button
+            type="button"
+            onClick={() => setLightboxSrc(null)}
+            className="block w-full"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxSrc}
+              alt="Фото замовлення"
+              className="max-h-[95vh] w-full rounded-md object-contain"
+            />
+          </button>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 

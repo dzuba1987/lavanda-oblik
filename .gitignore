@@ -53,6 +53,11 @@ emulator-data/
 .idea/
 .vscode/
 
+# Claude Code / agents
+.agents/
+.claude/
+skills-lock.json
+
 # Local data files (не комітити чутливі дані)
 /*.xlsx
 /data/

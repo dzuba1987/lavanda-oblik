@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sprout, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,9 +56,14 @@ export default function LoginPage() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center bg-gradient-to-br from-violet-50 via-white to-purple-50 px-4 py-10 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
       <div className="mb-6 flex flex-col items-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-lg">
-          <Sprout className="h-8 w-8" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icon-192.png"
+          alt=""
+          width={64}
+          height={64}
+          className="h-16 w-16 rounded-2xl shadow-lg"
+        />
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">ЛавандаОблік</h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Увійдіть, щоб продовжити

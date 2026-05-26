@@ -22,7 +22,7 @@ service cloud.firestore {
     }
 
     function isValidRole(role) {
-      return role in ['admin', 'viewer'];
+      return role in ['admin', 'seller', 'viewer'];
     }
 
     function isNonEmptyString(v) {
@@ -111,13 +111,46 @@ service cloud.firestore {
         && request.resource.data.items.size() > 0
         && request.resource.data.status in ['new', 'confirmed', 'in_progress', 'ready', 'delivered', 'cancelled']
         && isNonNegative(request.resource.data.totalAmount)
+        && request.resource.data.photos is list
+        && request.resource.data.photos.size() <= 5
+        && (request.resource.data.delivery == null
+            || request.resource.data.delivery.method in ['nova_poshta', 'ukrposhta', 'meest', 'courier', 'self_pickup', 'other'])
         && request.resource.data.createdBy == request.auth.uid;
 
       allow update: if isAdmin()
         && request.resource.data.status in ['new', 'confirmed', 'in_progress', 'ready', 'delivered', 'cancelled']
-        && isNonNegative(request.resource.data.totalAmount);
+        && isNonNegative(request.resource.data.totalAmount)
+        && request.resource.data.photos is list
+        && request.resource.data.photos.size() <= 5
+        && (request.resource.data.delivery == null
+            || request.resource.data.delivery.method in ['nova_poshta', 'ukrposhta', 'meest', 'courier', 'self_pickup', 'other']);
 
       allow delete: if isAdmin();
+
+      // ===== orders/{id}/comments — потік коментарів =====
+      match /comments/{commentId} {
+        allow read: if isAdmin();
+
+        allow create: if isAdmin()
+          && isNonEmptyString(request.resource.data.text)
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.authorUid == request.auth.uid;
+
+        // Видаляти тільки свої коментарі.
+        allow delete: if isAdmin()
+          && resource.data.authorUid == request.auth.uid;
+
+        // Редагування не дозволяємо (immutable audit).
+        allow update: if false;
+      }
+    }
+
+    // ===== settings (telegram notification config, etc.) =====
+    match /settings/{id} {
+      // Будь-який залогінений читає — клієнт перевіряє notifyNewUser/notifyNewOrder
+      // перед викликом Telegram-бекенду. Чутливі дані сюди не складаємо.
+      allow read: if isAuthed();
+      allow write: if isAdmin();
     }
 
     // ===== transactions =====

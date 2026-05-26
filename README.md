@@ -28,6 +28,49 @@ npm run deploy:rules       # тільки firestore.rules
 npm run deploy:indexes     # тільки firestore.indexes.json
 ```
 
+## Telegram-сповіщення
+
+Підключаються до зовнішнього Laravel-бекенду `invest-notify` (той самий, що
+обслуговує Invest UA). Endpoints — `/api/lavanda/telegram/*`. Bot — окремий,
+налаштовується у `.env`.
+
+**Frontend (`.env.local`):**
+
+```env
+NEXT_PUBLIC_NOTIFY_API_BASE=https://your-host/api
+NEXT_PUBLIC_NOTIFY_API_KEY=<той самий API_SECRET_KEY, що на бекенді>
+NEXT_PUBLIC_LAVANDA_BOT_NAME=lavanda_oblik_bot
+```
+
+**Backend (`invest-notify/.env`):**
+
+```env
+LAVANDA_TELEGRAM_BOT_TOKEN=<токен від @BotFather>
+LAVANDA_TELEGRAM_BOT_NAME=lavanda_oblik_bot
+LAVANDA_FRONTEND_URL=https://lavanda-oblik.web.app
+LAVANDA_FIREBASE_CREDENTIALS=storage/app/firebase/lavanda-service-account.json
+LAVANDA_FIREBASE_PROJECT=lavanda-oblik
+```
+
+**Кроки разового налаштування:**
+
+1. Створити бота через [@BotFather](https://t.me/BotFather) → отримати токен.
+2. У Firebase Console для `lavanda-oblik` згенерувати service account JSON,
+   покласти у `invest-notify/storage/app/firebase/lavanda-service-account.json`.
+3. На сервері виконати:
+   ```bash
+   php artisan lavanda:telegram:set-webhook https://your-host/api/lavanda/telegram/webhook
+   php artisan lavanda:telegram:set-commands
+   ```
+4. У додатку: Налаштування → Сповіщення → «Підключити Telegram».
+
+**Що відсилається:**
+
+- 🆕 Новий користувач підписався → `settings/telegram.chatId` (якщо
+  `notifyNewUser=true`) + усі адміни з прив'язаним TG (окрім самого новачка).
+- 🛒 Створено замовлення → усі адміни з прив'язаним TG (включно з автором,
+  щоб мати підтвердження надходження).
+
 ## Структура
 
 ```

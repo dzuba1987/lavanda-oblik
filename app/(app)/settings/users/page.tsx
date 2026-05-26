@@ -3,8 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -22,7 +29,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { listUsers, updateUserRole } from "@/lib/data/users";
+import { deleteUserDoc, listUsers, updateUserRole } from "@/lib/data/users";
 import type { Role, UserDoc } from "@/lib/data/types";
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -79,6 +86,27 @@ export default function UsersSettingsPage() {
     }
   }
 
+  async function handleReject(uid: string, email: string) {
+    if (
+      !window.confirm(
+        `Відхилити заявку від ${email}? Запис буде видалено, але користувач зможе подати заявку ще раз.`
+      )
+    ) {
+      return;
+    }
+    setSavingUid(uid);
+    try {
+      await deleteUserDoc(uid);
+      setUsers((prev) => (prev ? prev.filter((u) => u.uid !== uid) : prev));
+      toast.success("Заявку відхилено");
+    } catch (e) {
+      const err = e as { message?: string };
+      toast.error(err?.message ?? "Не вдалось відхилити заявку");
+    } finally {
+      setSavingUid(null);
+    }
+  }
+
   if (loading || !isAdmin) {
     return (
       <main className="flex flex-1 items-center justify-center">
@@ -92,7 +120,8 @@ export default function UsersSettingsPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Користувачі</h1>
         <p className="text-sm text-muted-foreground">
-          Всі акаунти, що зареєструвалися. Змінюйте роль, щоб дати доступ.
+          Нові заявки на доступ помічено «Очікує» — затвердіть або відхиліть.
+          Активним акаунтам можна змінити роль будь-коли.
         </p>
       </header>
 
@@ -134,6 +163,50 @@ export default function UsersSettingsPage() {
                           <Badge variant={ROLE_VARIANTS[u.role]}>
                             {ROLE_LABELS[u.role]} · ви
                           </Badge>
+                        ) : u.role === "viewer" ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className="border-amber-500 text-amber-700 dark:text-amber-400"
+                            >
+                              Очікує
+                            </Badge>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  disabled={savingUid === u.uid}
+                                >
+                                  Затвердити
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start">
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleRoleChange(u.uid, "admin")
+                                  }
+                                >
+                                  {ROLE_LABELS.admin}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleRoleChange(u.uid, "seller")
+                                  }
+                                >
+                                  {ROLE_LABELS.seller}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleReject(u.uid, u.email)}
+                              disabled={savingUid === u.uid}
+                            >
+                              Відхилити
+                            </Button>
+                          </div>
                         ) : (
                           <Select
                             value={u.role}

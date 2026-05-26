@@ -8,6 +8,15 @@ export interface UserDoc {
   name: string | null;
   role: Role;
   createdAt: Timestamp;
+  /** Telegram chat ID, заповнюється коли користувач прив'язує Telegram. */
+  telegramChatId?: string | null;
+}
+
+export interface TelegramSettings {
+  /** chatId головного адміна, на який дублюються alert'и про нових юзерів. */
+  chatId: string;
+  notifyNewUser: boolean;
+  notifyNewOrder: boolean;
 }
 
 export type TransactionType = "income" | "expense";
@@ -104,6 +113,41 @@ export interface OrderItem {
   totalAmount: number;
 }
 
+export const ORDER_PHOTOS_MAX = 5;
+
+export type DeliveryMethod =
+  | "nova_poshta"
+  | "ukrposhta"
+  | "meest"
+  | "courier"
+  | "self_pickup"
+  | "other";
+
+export const DELIVERY_METHODS: DeliveryMethod[] = [
+  "nova_poshta",
+  "ukrposhta",
+  "meest",
+  "courier",
+  "self_pickup",
+  "other",
+];
+
+export interface Delivery {
+  method: DeliveryMethod;
+  /** ТТН / номер відправлення (для НП, Укрпошти, Meest). */
+  trackingNumber: string | null;
+  /** Адреса доставки, № відділення або довільний опис. */
+  address: string | null;
+}
+
+export interface OrderComment {
+  id: string;
+  text: string;
+  authorUid: string;
+  authorName: string | null;
+  createdAt: Timestamp;
+}
+
 export interface Order {
   id: string;
   customerId: string | null;
@@ -115,6 +159,15 @@ export interface Order {
   notes: string | null;
   /** ID транзакцій, створених при переході в delivered. */
   transactionIds: string[];
+  /**
+   * Inline JPEG-фото у вигляді data URL (base64). Зберігаються в самому
+   * документі замовлення — без Firebase Storage.
+   * Через ліміт документа Firestore (1MB) кожне фото має бути компактним:
+   * ресайз до 800px + JPEG q=0.7 (~30-80КБ). Максимум {@link ORDER_PHOTOS_MAX}.
+   */
+  photos: string[];
+  /** Інформація про доставку. null = не вказано. */
+  delivery: Delivery | null;
   createdBy: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;

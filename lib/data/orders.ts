@@ -1,8 +1,9 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
-  addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   serverTimestamp,
@@ -14,7 +15,9 @@ import {
   type QueryConstraint,
 } from "firebase/firestore";
 import { firebase } from "@/lib/firebase/client";
-import type { Order, OrderItem, OrderStatus } from "./types";
+import { notifyNewOrder } from "@/lib/notify/telegram";
+import { formatDate } from "@/lib/utils/format";
+import type { Delivery, Order, OrderItem, OrderStatus } from "./types";
 
 const COLLECTION = "orders";
 
@@ -26,6 +29,9 @@ export type OrderInput = {
   deadline: Date | null;
   status: OrderStatus;
   notes: string | null;
+  /** Inline JPEG-фото у вигляді data URL (data:image/jpeg;base64,...). */
+  photos: string[];
+  delivery: Delivery | null;
 };
 
 export type OrderFilter = {
@@ -51,11 +57,28 @@ export async function listOrders(filter: OrderFilter = {}): Promise<Order[]> {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
 }
 
+/**
+ * Generates a fresh document ID without writing. Дозволяє відкрити форму
+ * нового замовлення з відомим id (зараз не критично, але корисно для
+ * подальших навігаційних флоу).
+ */
+export function newOrderId(): string {
+  return doc(col()).id;
+}
+
+export async function getOrder(id: string): Promise<Order | null> {
+  const snap = await getDoc(doc(firebase.db, COLLECTION, id));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() } as Order;
+}
+
 export async function createOrder(
+  id: string,
   input: OrderInput,
-  uid: string
-): Promise<string> {
-  const ref = await addDoc(col(), {
+  uid: string,
+  createdByName: string | null = null
+): Promise<void> {
+  await setDoc(doc(firebase.db, COLLECTION, id), {
     customerId: input.customerId,
     customerName: input.customerName,
     items: input.items,
@@ -63,13 +86,27 @@ export async function createOrder(
     deadline: input.deadline ? Timestamp.fromDate(input.deadline) : null,
     status: input.status,
     notes: input.notes,
+    photos: input.photos,
+    delivery: input.delivery,
     transactionIds: [],
     createdBy: uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     deliveredAt: null,
   });
-  return ref.id;
+
+  const firstItem = input.items[0];
+  notifyNewOrder({
+    orderId: id,
+    customerName: input.customerName,
+    createdByName,
+    totalAmount: input.totalAmount,
+    itemsCount: input.items.length,
+    firstItem: firstItem
+      ? `${firstItem.productName} × ${firstItem.quantity}`
+      : null,
+    deadline: input.deadline ? formatDate(input.deadline) : null,
+  }).catch((e) => console.warn("notifyNewOrder failed", e));
 }
 
 export async function updateOrder(
@@ -84,6 +121,8 @@ export async function updateOrder(
     deadline: input.deadline ? Timestamp.fromDate(input.deadline) : null,
     status: input.status,
     notes: input.notes,
+    photos: input.photos,
+    delivery: input.delivery,
     updatedAt: serverTimestamp(),
   });
 }
