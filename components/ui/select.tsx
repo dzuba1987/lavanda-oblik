@@ -60,10 +60,25 @@ function SelectTrigger({
 function SelectContent({
   className,
   children,
-  position = "item-aligned",
+  // Дефолт `item-aligned` не обмежує висоту контенту й розраховує на
+  // ScrollUp/ScrollDown-кнопки; всередині модального Dialog'у це призводить
+  // до того, що список виходить за межі viewport, а wheel-скрол не працює
+  // (react-remove-scroll preventDefault'ить wheel на portal-овані діти).
+  // `popper` активує `max-h-(--radix-select-content-available-height)` +
+  // native overflow-y-auto, тому wheel працює без додаткових хаків.
+  position = "popper",
   align = "center",
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  // Резервний JS-скрол: навіть з popper-позиціонуванням react-remove-scroll
+  // від Dialog'у може блокувати браузерний wheel — програмний scrollTop
+  // не залежить від preventDefault.
+  function handleViewportWheel(e: React.WheelEvent<HTMLDivElement>) {
+    const viewport = e.currentTarget;
+    if (viewport.scrollHeight > viewport.clientHeight) {
+      viewport.scrollTop += e.deltaY;
+    }
+  }
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -81,6 +96,7 @@ function SelectContent({
             "data-[position=popper]:h-(--radix-select-trigger-height) data-[position=popper]:w-full data-[position=popper]:min-w-(--radix-select-trigger-width)",
             position === "popper" && ""
           )}
+          onWheel={handleViewportWheel}
         >
           {children}
         </SelectPrimitive.Viewport>

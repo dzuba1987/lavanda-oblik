@@ -71,6 +71,17 @@ export function EntityCombobox({
     }
   }
 
+  // Усередині модального Dialog react-remove-scroll preventDefault'ить wheel
+  // events на portal-овані діти Popover. Browser default scroll блокується,
+  // тому скролимо CommandList програмно — preventDefault не зупиняє JS.
+  // Альтернатива з `modal` на Popover ламала скрол самої форми Dialog'у.
+  function handleListWheel(e: React.WheelEvent<HTMLDivElement>) {
+    const list = e.currentTarget;
+    if (list.scrollHeight > list.clientHeight) {
+      list.scrollTop += e.deltaY;
+    }
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -106,7 +117,10 @@ export function EntityCombobox({
             value={search}
             onValueChange={setSearch}
           />
-          <CommandList className="max-h-(--radix-popover-content-available-height)">
+          <CommandList
+            className="max-h-(--radix-popover-content-available-height)"
+            onWheel={handleListWheel}
+          >
             <CommandEmpty>
               {onCreate && trimmed ? (
                 <button

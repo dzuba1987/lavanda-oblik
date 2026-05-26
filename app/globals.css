@@ -129,31 +129,30 @@
   }
 }
 
-@layer utilities {
-  /* Видимий тонкий скролбар — не autohide як в macOS overlay. Використовуй
-     там, де користувачу важливо бачити, що список можна прокрутити (списки
-     dropdown'ів з 10+ пунктами тощо). */
-  .thin-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(124, 92, 187, 0.45) transparent;
-  }
-  .thin-scrollbar::-webkit-scrollbar {
-    /* -webkit-appearance:none перемикає macOS Chrome/Safari з overlay
-       (autohide) у classic mode — scrollbar видно постійно. */
-    -webkit-appearance: none;
-    width: 8px;
-    height: 8px;
-  }
-  .thin-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .thin-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(124, 92, 187, 0.45);
-    border-radius: 4px;
-  }
-  .thin-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(124, 92, 187, 0.7);
-  }
+/* Видимий тонкий скролбар — не autohide як в macOS overlay. Винесений поза
+   @layer utilities, інакше Tailwind v4 prune'ить vendor-префікс
+   `-webkit-appearance`, без якого Chromium на macOS не перемикається з
+   overlay (autohide) у classic mode і scrollbar лишається невидимим. */
+.thin-scrollbar {
+  scrollbar-color: rgba(124, 92, 187, 0.55) rgba(0, 0, 0, 0.04);
+  scrollbar-gutter: stable;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  -webkit-appearance: none !important;
+  width: 10px;
+  height: 10px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(124, 92, 187, 0.55);
+  border-radius: 4px;
+  min-height: 30px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 92, 187, 0.75);
 }
 
 /*

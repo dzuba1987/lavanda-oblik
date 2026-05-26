@@ -60,6 +60,16 @@ export default function RootLayout({
       lang="uk"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Raw CSS — обходить Lightning CSS, який інакше викидає
+            -webkit-appearance префікс, без якого Chromium на macOS залишає
+            scrollbar у overlay (autohide) режимі і він не видно у dropdown'ах. */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `.thin-scrollbar::-webkit-scrollbar{-webkit-appearance:none!important;width:10px;height:10px}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <BootLoader />
         <AuthProvider>{children}</AuthProvider>
