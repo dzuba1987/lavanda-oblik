@@ -632,28 +632,40 @@ export function OrderForm({
                   />
 
                   <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0"
-                      value={row.unitPrice}
-                      onChange={(e) =>
-                        patchItem(row.id, { unitPrice: e.target.value })
-                      }
-                      placeholder="Ціна"
-                    />
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      step="1"
-                      min="0"
-                      value={row.quantity}
-                      onChange={(e) =>
-                        patchItem(row.id, { quantity: e.target.value })
-                      }
-                      placeholder="К-сть"
-                    />
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        value={row.unitPrice}
+                        onChange={(e) =>
+                          patchItem(row.id, { unitPrice: e.target.value })
+                        }
+                        placeholder="Ціна"
+                        className="pr-10"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-muted-foreground">
+                        грн
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        step="1"
+                        min="0"
+                        value={row.quantity}
+                        onChange={(e) =>
+                          patchItem(row.id, { quantity: e.target.value })
+                        }
+                        placeholder="К-сть"
+                        className="pr-10"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-muted-foreground">
+                        шт
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
