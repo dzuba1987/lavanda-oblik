@@ -345,7 +345,7 @@ export default function OrdersPage() {
         value={statusFilter}
         onValueChange={(v) => setStatusFilter(v as StatusFilter)}
       >
-        <TabsList className="flex w-full flex-wrap justify-start">
+        <TabsList className="flex w-full justify-start overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[data-slot=tabs-trigger]]:flex-none [&>[data-slot=tabs-trigger]]:px-3">
           <TabsTrigger value="active">
             Активні<TabCount n={tabCounts.active} />
           </TabsTrigger>

@@ -60,4 +60,10 @@ skills-lock.json
 
 # Local data files (не комітити чутливі дані)
 /*.xlsx
+/*.ods
+/~$*
+/signup-form.png
 /data/
+
+# Playwright MCP кеш
+.playwright-mcp/
