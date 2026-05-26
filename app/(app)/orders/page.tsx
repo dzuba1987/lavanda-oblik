@@ -24,6 +24,7 @@ import {
   Navigation,
 } from "lucide-react";
 import { DELIVERY_LABELS, mapsDirectionsUrl } from "@/lib/utils/delivery";
+import { VoiceOrderButton } from "@/components/VoiceOrderButton";
 import {
   Select,
   SelectContent,
@@ -360,12 +361,15 @@ export default function OrdersPage() {
             {pluralize(filtered.length, "замовлення", "замовлення", "замовлень")}
           </p>
         </div>
-        <Button
-          onClick={openCreate}
-          className="hidden bg-violet-600 hover:bg-violet-700 md:inline-flex"
-        >
-          <Plus className="mr-1 h-4 w-4" /> Замовлення
-        </Button>
+        <div className="flex items-center gap-2">
+          <VoiceOrderButton />
+          <Button
+            onClick={openCreate}
+            className="hidden bg-violet-600 hover:bg-violet-700 md:inline-flex"
+          >
+            <Plus className="mr-1 h-4 w-4" /> Замовлення
+          </Button>
+        </div>
       </header>
 
       <KpiRow kpi={kpi} loading={loading} />
