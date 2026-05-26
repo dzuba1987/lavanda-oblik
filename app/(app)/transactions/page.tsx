@@ -14,7 +14,6 @@ import {
   Loader2,
   ShoppingCart,
 } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -458,14 +457,10 @@ function TransactionRow({
               {t.productName ?? t.categoryName}
             </span>
             {t.orderId && (
-              <Link
-                href={`/orders/view/?id=${t.orderId}`}
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex shrink-0 items-center rounded-full bg-violet-100 p-0.5 text-violet-700 hover:bg-violet-200 dark:bg-violet-950/50 dark:text-violet-300"
-                title="Відкрити замовлення"
-              >
-                <ShoppingCart className="h-3 w-3" />
-              </Link>
+              <ShoppingCart
+                className="h-3 w-3 shrink-0 text-violet-600 dark:text-violet-400"
+                aria-label="З замовлення"
+              />
             )}
           </div>
           <div className="truncate text-xs text-muted-foreground">
