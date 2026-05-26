@@ -9,6 +9,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  HelpCircle,
   User as UserIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -93,12 +94,41 @@ function Sidebar() {
             </Link>
           );
         })}
+        <Link
+          href="/help/"
+          className={cn(
+            "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            isActive(pathname, "/help/")
+              ? "bg-violet-100 text-violet-900 dark:bg-violet-950/50 dark:text-violet-200"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}
+        >
+          <HelpCircle className="h-4 w-4" />
+          <span>Довідка</span>
+        </Link>
       </nav>
 
       <div className="border-t p-3">
         <ProfileMenu align="start" />
       </div>
     </aside>
+  );
+}
+
+function HelpButton() {
+  return (
+    <Button
+      asChild
+      variant="ghost"
+      size="icon"
+      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+      aria-label="Довідка"
+      title="Довідка"
+    >
+      <Link href="/help/">
+        <HelpCircle className="h-5 w-5" />
+      </Link>
+    </Button>
   );
 }
 
@@ -116,7 +146,10 @@ function MobileHeader() {
         />
         <span className="font-semibold tracking-tight">ЛавандаОблік</span>
       </div>
-      <ProfileMenu align="end" compact />
+      <div className="flex items-center gap-1">
+        <HelpButton />
+        <ProfileMenu align="end" compact />
+      </div>
     </header>
   );
 }
