@@ -24,6 +24,7 @@ import {
   type Category,
   type Customer,
   type DeliveryMethod,
+  type DeliveryPaidBy,
   type Order,
   type OrderItem,
   type Product,
@@ -106,6 +107,9 @@ export function OrderForm({
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod | "">("");
   const [deliveryTracking, setDeliveryTracking] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryCost, setDeliveryCost] = useState("");
+  const [deliveryPaidBy, setDeliveryPaidBy] =
+    useState<DeliveryPaidBy | "">("");
 
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
@@ -156,6 +160,10 @@ export function OrderForm({
       setDeliveryMethod(initial.delivery?.method ?? "");
       setDeliveryTracking(initial.delivery?.trackingNumber ?? "");
       setDeliveryAddress(initial.delivery?.address ?? "");
+      setDeliveryCost(
+        initial.delivery?.cost != null ? String(initial.delivery.cost) : ""
+      );
+      setDeliveryPaidBy(initial.delivery?.paidBy ?? "");
       newOrderIdRef.current = initial.id;
     } else {
       setCustomerId(null);
@@ -167,6 +175,8 @@ export function OrderForm({
       setDeliveryMethod("");
       setDeliveryTracking("");
       setDeliveryAddress("");
+      setDeliveryCost("");
+      setDeliveryPaidBy("");
       newOrderIdRef.current = newOrderId();
     }
     setLocalCategories([]);
@@ -421,6 +431,13 @@ export function OrderForm({
         }
       }
 
+      const parsedCost = deliveryCost.trim() === "" ? null : Number(deliveryCost);
+      if (parsedCost != null && (Number.isNaN(parsedCost) || parsedCost < 0)) {
+        toast.error("Невірна вартість доставки");
+        setSaving(false);
+        return;
+      }
+
       const delivery = deliveryMethod
         ? {
             method: deliveryMethod,
@@ -428,6 +445,11 @@ export function OrderForm({
               ? deliveryTracking.trim() || null
               : null,
             address: deliveryAddress.trim() || null,
+            cost: parsedCost && parsedCost > 0 ? parsedCost : null,
+            paidBy:
+              parsedCost && parsedCost > 0 && deliveryPaidBy
+                ? deliveryPaidBy
+                : null,
           }
         : null;
 
@@ -477,7 +499,7 @@ export function OrderForm({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
             {initial ? "Редагувати замовлення" : "Нове замовлення"}
@@ -520,7 +542,7 @@ export function OrderForm({
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="order-deadline">Дедлайн (опц.)</Label>
+            <Label htmlFor="order-deadline">Доставити до (опц.)</Label>
             <Input
               id="order-deadline"
               type="date"
@@ -676,6 +698,43 @@ export function OrderForm({
                     </a>
                   );
                 })()}
+
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="del-cost" className="text-xs text-muted-foreground">
+                      Вартість доставки (опц.)
+                    </Label>
+                    <Input
+                      id="del-cost"
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      value={deliveryCost}
+                      onChange={(e) => setDeliveryCost(e.target.value)}
+                      placeholder="0,00"
+                    />
+                  </div>
+                  {deliveryCost.trim() !== "" && Number(deliveryCost) > 0 && (
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Платить</Label>
+                      <Select
+                        value={deliveryPaidBy || ""}
+                        onValueChange={(v) =>
+                          setDeliveryPaidBy(v as DeliveryPaidBy | "")
+                        }
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="customer">Клієнт (дохід)</SelectItem>
+                          <SelectItem value="us">Ми (витрата)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

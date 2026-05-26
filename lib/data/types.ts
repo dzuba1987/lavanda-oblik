@@ -153,12 +153,22 @@ export const DELIVERY_METHODS: DeliveryMethod[] = [
   "other",
 ];
 
+/** Хто оплачує доставку: клієнт (→ income) чи ми (→ expense). */
+export type DeliveryPaidBy = "customer" | "us";
+
 export interface Delivery {
   method: DeliveryMethod;
   /** ТТН / номер відправлення (для НП, Укрпошти, Meest). */
   trackingNumber: string | null;
   /** Адреса доставки, № відділення або довільний опис. */
   address: string | null;
+  /**
+   * Вартість доставки. null / 0 = безкоштовна або не вказана.
+   * При completeOrder, якщо > 0 і paidBy заданий — створюється окрема
+   * транзакція income (customer) або expense (us) у категорії "Доставка".
+   */
+  cost?: number | null;
+  paidBy?: DeliveryPaidBy | null;
 }
 
 export interface OrderComment {

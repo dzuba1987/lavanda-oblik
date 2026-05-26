@@ -18,7 +18,14 @@ import { firebase } from "@/lib/firebase/client";
 import { notifyNewOrder } from "@/lib/notify/telegram";
 import { formatDate } from "@/lib/utils/format";
 import { currentAudit } from "./audit";
-import type { Delivery, Order, OrderItem, OrderStatus } from "./types";
+import type {
+  Category,
+  Delivery,
+  Order,
+  OrderItem,
+  OrderStatus,
+  TransactionType,
+} from "./types";
 
 const COLLECTION = "orders";
 
@@ -143,18 +150,15 @@ export async function updateOrder(
 }
 
 /**
- * Простий перехід статусу без створення транзакцій.
- * Для переходу в 'ready' (terminal) використовуйте completeOrder.
+ * Простий перехід статусу без побічних ефектів.
+ * Для першого переходу в 'ready' (створення транзакцій income) — використовуйте
+ * completeOrder. Для повторного ready (коли transactionIds вже не порожній)
+ * можна викликати цей метод напряму, щоб не дублювати транзакції.
  */
 export async function updateOrderStatus(
   id: string,
   status: OrderStatus
 ): Promise<void> {
-  if (status === "ready") {
-    throw new Error(
-      "Для переходу в 'ready' використовуйте completeOrder — він створює транзакції"
-    );
-  }
   const audit = currentAudit();
   await updateDoc(doc(firebase.db, COLLECTION, id), {
     status,
@@ -216,6 +220,48 @@ export async function completeOrder(
     });
   }
 
+  // Платна доставка → окрема income/expense транзакція у категорії "Доставка".
+  const dCost = order.delivery?.cost ?? null;
+  const dPaidBy = order.delivery?.paidBy ?? null;
+  if (dCost && dCost > 0 && dPaidBy) {
+    const txType: TransactionType =
+      dPaidBy === "customer" ? "income" : "expense";
+    const cat = await resolveDeliveryCategory(
+      txType,
+      batch,
+      ts,
+      createdBy,
+      createdByName
+    );
+    const txRef = doc(txCollection);
+    newTxIds.push(txRef.id);
+    batch.set(txRef, {
+      date: txTs,
+      type: txType,
+      categoryId: cat.id,
+      categoryName: cat.name,
+      productId: null,
+      productName: "Доставка",
+      supplierId: null,
+      supplierName: null,
+      customerId: dPaidBy === "customer" ? order.customerId : null,
+      customerName: dPaidBy === "customer" ? order.customerName : null,
+      unitPrice: dCost,
+      quantity: 1,
+      totalAmount: dCost,
+      note: order.delivery?.trackingNumber
+        ? `ТТН: ${order.delivery.trackingNumber}`
+        : null,
+      orderId: order.id,
+      createdBy,
+      createdByName,
+      updatedBy: createdBy,
+      updatedByName: createdByName,
+      createdAt: ts,
+      updatedAt: ts,
+    });
+  }
+
   batch.update(doc(firebase.db, COLLECTION, order.id), {
     status: "ready" as OrderStatus,
     deliveredAt: txTs,
@@ -227,6 +273,45 @@ export async function completeOrder(
 
   await batch.commit();
   return newTxIds;
+}
+
+const DELIVERY_CATEGORY_COLOR = "#6366f1"; // indigo — нейтральний для "Доставка"
+
+/**
+ * Знаходить категорію "Доставка" заданого типу (income/expense). Якщо відсутня —
+ * створює нову у тому ж batch, повертає id+name.
+ */
+async function resolveDeliveryCategory(
+  type: TransactionType,
+  batch: ReturnType<typeof writeBatch>,
+  ts: ReturnType<typeof serverTimestamp>,
+  createdBy: string,
+  createdByName: string | null
+): Promise<{ id: string; name: string }> {
+  const snap = await getDocs(
+    query(collection(firebase.db, "categories"), where("type", "==", type))
+  );
+  const target = snap.docs.find(
+    (d) => (d.data() as Category).name.trim().toLowerCase() === "доставка"
+  );
+  if (target) {
+    const data = target.data() as Category;
+    return { id: target.id, name: data.name };
+  }
+  const ref = doc(collection(firebase.db, "categories"));
+  batch.set(ref, {
+    name: "Доставка",
+    type,
+    color: DELIVERY_CATEGORY_COLOR,
+    sortOrder: 999,
+    createdBy,
+    createdByName,
+    updatedBy: createdBy,
+    updatedByName: createdByName,
+    createdAt: ts,
+    updatedAt: ts,
+  });
+  return { id: ref.id, name: "Доставка" };
 }
 
 export async function deleteOrder(id: string): Promise<void> {

@@ -268,13 +268,23 @@ export default function OrdersPage() {
   }
 
   async function handleStatusChange(o: Order, newStatus: OrderStatus) {
-    if (newStatus === "ready") {
+    const hasTransactions = (o.transactionIds?.length ?? 0) > 0;
+
+    // Перехід у ready без створених раніше транзакцій → confirm dialog, далі completeOrder.
+    if (newStatus === "ready" && !hasTransactions) {
       setPendingComplete(o);
       return;
     }
+
     try {
       await updateOrderStatus(o.id, newStatus);
       toast.success("Статус оновлено");
+      // Якщо переводимо ready → щось інше і транзакції вже існують — нагадати про них.
+      if (o.status === "ready" && newStatus !== "ready" && hasTransactions) {
+        toast.warning(
+          `Транзакції замовлення (${o.transactionIds.length}) лишилися у /transactions/. Видаліть вручну, якщо потрібно.`
+        );
+      }
       reload();
     } catch (e) {
       console.error(e);
@@ -433,23 +443,42 @@ export default function OrdersPage() {
           <DialogHeader>
             <DialogTitle>Завершити замовлення?</DialogTitle>
             <DialogDescription>
-              {pendingComplete && (
-                <>
-                  Буде створено{" "}
-                  <span className="font-semibold">
-                    {pendingComplete.items.length}{" "}
-                    {pluralize(
-                      pendingComplete.items.length,
-                      "транзакцію",
-                      "транзакції",
-                      "транзакцій"
+              {pendingComplete && (() => {
+                const dCost = pendingComplete.delivery?.cost ?? 0;
+                const dPaidBy = pendingComplete.delivery?.paidBy ?? null;
+                const hasDeliveryTx = dCost > 0 && dPaidBy !== null;
+                const txCount =
+                  pendingComplete.items.length + (hasDeliveryTx ? 1 : 0);
+                return (
+                  <>
+                    Буде створено{" "}
+                    <span className="font-semibold">
+                      {txCount}{" "}
+                      {pluralize(
+                        txCount,
+                        "транзакцію",
+                        "транзакції",
+                        "транзакцій"
+                      )}
+                    </span>{" "}
+                    на загальну суму{" "}
+                    {formatMoney(pendingComplete.totalAmount)}.
+                    {hasDeliveryTx && (
+                      <>
+                        {" "}
+                        Окрема{" "}
+                        {dPaidBy === "customer" ? "income" : "expense"}{" "}
+                        транзакція «Доставка» на {formatMoney(dCost)} (
+                        {dPaidBy === "customer"
+                          ? "клієнт платить"
+                          : "ми платимо"}
+                        ).
+                      </>
                     )}{" "}
-                    доходу
-                  </span>{" "}
-                  на загальну суму {formatMoney(pendingComplete.totalAmount)}.
-                  Замовлення стане статусом «Готове».
-                </>
-              )}
+                    Замовлення стане статусом «Готове».
+                  </>
+                );
+              })()}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -682,12 +711,31 @@ function OrderCard({
 
             {order.delivery && (
               <div className="space-y-1">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                   <Truck className="h-3 w-3" />
                   <span>{DELIVERY_LABELS[order.delivery.method]}</span>
                   {order.delivery.trackingNumber && (
                     <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
                       {order.delivery.trackingNumber}
+                    </span>
+                  )}
+                  {order.delivery.cost != null && order.delivery.cost > 0 && (
+                    <span
+                      className={
+                        order.delivery.paidBy === "us"
+                          ? "rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                          : "rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      }
+                      title={
+                        order.delivery.paidBy === "us"
+                          ? "Платимо ми"
+                          : order.delivery.paidBy === "customer"
+                            ? "Платить клієнт"
+                            : "Платна доставка"
+                      }
+                    >
+                      {order.delivery.paidBy === "us" ? "−" : "+"}
+                      {formatMoney(order.delivery.cost)}
                     </span>
                   )}
                 </div>
@@ -782,7 +830,7 @@ function StatusActions({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const isActive = ACTIVE_STATUSES.includes(order.status);
+  const hasTransactions = (order.transactionIds?.length ?? 0) > 0;
 
   return (
     <DropdownMenu>
@@ -791,38 +839,44 @@ function StatusActions({
           <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        {isActive && (
-          <>
-            <DropdownMenuLabel className="text-xs">
-              Змінити статус
-            </DropdownMenuLabel>
-            {order.status !== "confirmed" && (
-              <DropdownMenuItem onClick={() => onStatusChange("confirmed")}>
-                <CheckCircle2 className="mr-2 h-4 w-4 text-violet-600" />
-                Підтверджено
-              </DropdownMenuItem>
-            )}
-            {order.status !== "in_progress" && (
-              <DropdownMenuItem onClick={() => onStatusChange("in_progress")}>
-                <Clock3 className="mr-2 h-4 w-4 text-amber-600" />
-                В роботі
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={() => onStatusChange("ready")}>
-              <PackageCheck className="mr-2 h-4 w-4 text-emerald-600" />
-              Готове → транзакція
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onStatusChange("cancelled")}
-              variant="destructive"
-            >
-              <CircleSlash className="mr-2 h-4 w-4" />
-              Скасувати
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="text-xs">
+          Змінити статус
+        </DropdownMenuLabel>
+        {order.status !== "new" && (
+          <DropdownMenuItem onClick={() => onStatusChange("new")}>
+            <PackageOpen className="mr-2 h-4 w-4 text-sky-600" />
+            Нове
+          </DropdownMenuItem>
         )}
+        {order.status !== "confirmed" && (
+          <DropdownMenuItem onClick={() => onStatusChange("confirmed")}>
+            <CheckCircle2 className="mr-2 h-4 w-4 text-violet-600" />
+            Підтверджено
+          </DropdownMenuItem>
+        )}
+        {order.status !== "in_progress" && (
+          <DropdownMenuItem onClick={() => onStatusChange("in_progress")}>
+            <Clock3 className="mr-2 h-4 w-4 text-amber-600" />
+            В роботі
+          </DropdownMenuItem>
+        )}
+        {order.status !== "ready" && (
+          <DropdownMenuItem onClick={() => onStatusChange("ready")}>
+            <PackageCheck className="mr-2 h-4 w-4 text-emerald-600" />
+            {hasTransactions ? "Готове" : "Готове → транзакція"}
+          </DropdownMenuItem>
+        )}
+        {order.status !== "cancelled" && (
+          <DropdownMenuItem
+            onClick={() => onStatusChange("cancelled")}
+            variant="destructive"
+          >
+            <CircleSlash className="mr-2 h-4 w-4" />
+            Скасувати
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onEdit}>
           <Pencil className="mr-2 h-4 w-4" /> Редагувати
         </DropdownMenuItem>
