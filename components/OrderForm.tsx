@@ -221,7 +221,11 @@ export function OrderForm({
     setLocalCategories([]);
     setLocalProducts([]);
     setLocalCustomers([]);
-  }, [open, initial, customers, aiDraft]);
+    // customers / categories / products навмисно не в deps: інакше після
+    // onDictChanged (наприклад, після inline-створення клієнта) ефект
+    // re-fired би і скидав customerId/локальний кеш.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial, aiDraft]);
 
   // М'який backfill телефону: якщо форму відкрито без збереженого phone, але
   // у клієнта є phone у словнику customers — підставити. Спрацьовує, коли
