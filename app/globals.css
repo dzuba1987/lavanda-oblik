@@ -128,3 +128,30 @@
     @apply font-sans;
   }
 }
+
+@layer utilities {
+  /* Видимий тонкий скролбар — не autohide як в macOS overlay. Використовуй
+     там, де користувачу важливо бачити, що список можна прокрутити (списки
+     dropdown'ів з 10+ пунктами тощо). */
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(124, 92, 187, 0.45) transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar {
+    /* -webkit-appearance:none перемикає macOS Chrome/Safari з overlay
+       (autohide) у classic mode — scrollbar видно постійно. */
+    -webkit-appearance: none;
+    width: 8px;
+    height: 8px;
+  }
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(124, 92, 187, 0.45);
+    border-radius: 4px;
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(124, 92, 187, 0.7);
+  }
+}

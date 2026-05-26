@@ -277,7 +277,10 @@ export default function OrdersPage() {
     }
 
     try {
-      await updateOrderStatus(o.id, newStatus);
+      await updateOrderStatus(o.id, newStatus, {
+        previousStatus: o.status,
+        customerName: o.customerName,
+      });
       toast.success("Статус оновлено");
       // Якщо переводимо ready → щось інше і транзакції вже існують — нагадати про них.
       if (o.status === "ready" && newStatus !== "ready" && hasTransactions) {
@@ -647,9 +650,9 @@ function OrderCard({
   const photos = order.photos ?? [];
 
   return (
-    <Card className={cn("border-l-4", STATUS_BORDER[order.status])}>
+    <Card className={cn("relative border-l-4", STATUS_BORDER[order.status])}>
       <CardContent className="px-4 py-3">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onEdit}
@@ -703,10 +706,6 @@ function OrderCard({
                   + ще {restCount}
                 </span>
               )}
-              {" · "}
-              <span className="font-semibold text-foreground">
-                {formatMoney(order.totalAmount)}
-              </span>
             </div>
 
             {order.delivery && (
@@ -754,6 +753,13 @@ function OrderCard({
             )}
           </button>
 
+          <div className="shrink-0 pr-9 text-right text-lg font-bold tabular-nums text-violet-700 dark:text-violet-300">
+            {formatMoney(order.totalAmount)}
+          </div>
+        </div>
+
+        {/* ⋮ menu — floating top-right, не займає рядка з контентом */}
+        <div className="absolute right-2 top-2">
           <StatusActions
             order={order}
             onStatusChange={onStatusChange}

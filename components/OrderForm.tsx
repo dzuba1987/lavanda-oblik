@@ -479,6 +479,28 @@ export function OrderForm({
         toast.success("Замовлення створено");
       }
 
+      // Backfill — якщо у клієнта ще не було phone/address, а у замовленні
+      // тепер є — пропишемо їх назад у клієнта, щоб наступного разу
+      // підставлялись автоматично.
+      if (customerId) {
+        const existing = allCustomers.find((c) => c.id === customerId);
+        if (existing) {
+          const patch: Record<string, string | null> = {};
+          const orderPhone = phone.trim();
+          if (orderPhone && !existing.phone) patch.phone = orderPhone;
+          const orderAddress = (delivery?.address ?? "").trim();
+          if (orderAddress && !existing.address) patch.address = orderAddress;
+          if (Object.keys(patch).length > 0) {
+            try {
+              await customersCrud.update(customerId, patch);
+              onDictChanged?.();
+            } catch (e) {
+              console.warn("customer backfill failed", e);
+            }
+          }
+        }
+      }
+
       onSaved();
       onOpenChange(false);
     } catch (e) {
@@ -507,48 +529,50 @@ export function OrderForm({
         </DialogHeader>
 
         <div className="thin-scrollbar -mx-6 flex-1 space-y-4 overflow-y-auto px-6 py-2">
-          <div className="space-y-1">
-            <Label>Клієнт (опц.)</Label>
-            <EntityCombobox
-              items={allCustomers.map((c) => ({
-                id: c.id,
-                label: c.name,
-                hint: c.source ?? undefined,
-              }))}
-              value={customerId}
-              onChange={(id) => {
-                setCustomerId(id);
-                if (id) {
-                  const c = allCustomers.find((x) => x.id === id);
-                  if (c?.phone) setPhone(c.phone);
-                }
-              }}
-              placeholder="Не обрано"
-              onCreate={createCustomerInline}
-            />
-          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label>Клієнт (опц.)</Label>
+              <EntityCombobox
+                items={allCustomers.map((c) => ({
+                  id: c.id,
+                  label: c.name,
+                  hint: c.source ?? undefined,
+                }))}
+                value={customerId}
+                onChange={(id) => {
+                  setCustomerId(id);
+                  if (id) {
+                    const c = allCustomers.find((x) => x.id === id);
+                    if (c?.phone) setPhone(c.phone);
+                  }
+                }}
+                placeholder="Не обрано"
+                onCreate={createCustomerInline}
+              />
+            </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="order-phone">Телефон (опц.)</Label>
-            <Input
-              id="order-phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+380 67 123 45 67"
-            />
-          </div>
+            <div className="space-y-1">
+              <Label htmlFor="order-phone">Телефон (опц.)</Label>
+              <Input
+                id="order-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+380 67 123 45 67"
+              />
+            </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="order-deadline">Доставити до (опц.)</Label>
-            <Input
-              id="order-deadline"
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-            />
+            <div className="space-y-1">
+              <Label htmlFor="order-deadline">Доставити до (опц.)</Label>
+              <Input
+                id="order-deadline"
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
