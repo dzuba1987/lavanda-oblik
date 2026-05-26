@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { EntityCombobox, type ComboItem } from "@/components/EntityCombobox";
+import { AuditInfo } from "@/components/AuditInfo";
 import { cn } from "@/lib/utils";
 import {
   toInputDate,
@@ -238,6 +239,7 @@ export function TransactionForm(props: TransactionFormProps) {
       name: label,
       age: null,
       source: null,
+      phone: null,
       notes: null,
     });
     const fresh: Customer = {
@@ -245,6 +247,7 @@ export function TransactionForm(props: TransactionFormProps) {
       name: label,
       age: null,
       source: null,
+      phone: null,
       notes: null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createdAt: new Date() as any,
@@ -492,6 +495,8 @@ export function TransactionForm(props: TransactionFormProps) {
               placeholder="Будь-які деталі"
             />
           </div>
+
+          <AuditInfo item={initial} />
         </div>
 
         <DialogFooter>

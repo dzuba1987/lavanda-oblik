@@ -15,7 +15,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!loading && !authUser) router.replace("/login/");
   }, [loading, authUser, router]);
 
-  if (loading || !authUser) {
+  // Поки auth/Firestore читаються — лоадер. Важливо тримати його доки
+  // userDoc не підтягнеться (інакше при перемиканні акаунтів між
+  // setAuthUser і setUserDoc проскакує флеш кабінету з чужою роллю).
+  if (loading || !authUser || !userDoc) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
@@ -23,7 +26,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (userDoc && userDoc.role === "viewer") {
+  // Тільки явно дозволені ролі бачать кабінет; усе інше — очікування.
+  if (userDoc.role !== "admin" && userDoc.role !== "seller") {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
         <h1 className="text-xl font-semibold">Очікування доступу</h1>

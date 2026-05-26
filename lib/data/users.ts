@@ -46,8 +46,14 @@ export async function getUserDoc(uid: string): Promise<UserDoc | null> {
  * Створює або оновлює users/{uid} під час входу.
  * Перший користувач у системі отримує role='admin'.
  * Решта — 'viewer' (адмін підвищує вручну з UI пізніше).
+ *
+ * `nameOverride` потрібен для email-signup: на момент створення документа
+ * Firebase ще не встиг прокинути displayName з updateProfile у authUser об'єкт.
  */
-export async function ensureUserDoc(authUser: User): Promise<UserDoc> {
+export async function ensureUserDoc(
+  authUser: User,
+  nameOverride?: string | null
+): Promise<UserDoc> {
   const existing = await getUserDoc(authUser.uid);
   if (existing) return existing;
 
@@ -56,9 +62,12 @@ export async function ensureUserDoc(authUser: User): Promise<UserDoc> {
   );
   const role: Role = anyUsersSnap.empty ? "admin" : "viewer";
 
+  const resolvedName =
+    (nameOverride && nameOverride.trim()) || authUser.displayName || null;
+
   const payload = {
     email: authUser.email ?? "",
-    name: authUser.displayName ?? null,
+    name: resolvedName,
     role,
     createdAt: serverTimestamp(),
   };

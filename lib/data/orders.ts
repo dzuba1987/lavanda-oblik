@@ -17,6 +17,7 @@ import {
 import { firebase } from "@/lib/firebase/client";
 import { notifyNewOrder } from "@/lib/notify/telegram";
 import { formatDate } from "@/lib/utils/format";
+import { currentAudit } from "./audit";
 import type { Delivery, Order, OrderItem, OrderStatus } from "./types";
 
 const COLLECTION = "orders";
@@ -24,6 +25,7 @@ const COLLECTION = "orders";
 export type OrderInput = {
   customerId: string | null;
   customerName: string | null;
+  phone: string | null;
   items: OrderItem[];
   totalAmount: number;
   deadline: Date | null;
@@ -75,12 +77,17 @@ export async function getOrder(id: string): Promise<Order | null> {
 export async function createOrder(
   id: string,
   input: OrderInput,
-  uid: string,
-  createdByName: string | null = null
+  uid?: string,
+  createdByNameArg: string | null = null
 ): Promise<void> {
+  const audit = currentAudit();
+  const createdBy = uid || audit.uid;
+  const createdByName = createdByNameArg ?? audit.name;
+  const ts = serverTimestamp();
   await setDoc(doc(firebase.db, COLLECTION, id), {
     customerId: input.customerId,
     customerName: input.customerName,
+    phone: input.phone,
     items: input.items,
     totalAmount: input.totalAmount,
     deadline: input.deadline ? Timestamp.fromDate(input.deadline) : null,
@@ -88,10 +95,14 @@ export async function createOrder(
     notes: input.notes,
     photos: input.photos,
     delivery: input.delivery,
+    commentsCount: 0,
     transactionIds: [],
-    createdBy: uid,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdBy,
+    createdByName,
+    updatedBy: createdBy,
+    updatedByName: createdByName,
+    createdAt: ts,
+    updatedAt: ts,
     deliveredAt: null,
   });
 
@@ -113,9 +124,11 @@ export async function updateOrder(
   id: string,
   input: OrderInput
 ): Promise<void> {
+  const audit = currentAudit();
   await updateDoc(doc(firebase.db, COLLECTION, id), {
     customerId: input.customerId,
     customerName: input.customerName,
+    phone: input.phone,
     items: input.items,
     totalAmount: input.totalAmount,
     deadline: input.deadline ? Timestamp.fromDate(input.deadline) : null,
@@ -123,6 +136,8 @@ export async function updateOrder(
     notes: input.notes,
     photos: input.photos,
     delivery: input.delivery,
+    updatedBy: audit.uid,
+    updatedByName: audit.name,
     updatedAt: serverTimestamp(),
   });
 }
@@ -140,8 +155,11 @@ export async function updateOrderStatus(
       "Для переходу в 'delivered' використовуйте deliverOrder — він створює транзакції"
     );
   }
+  const audit = currentAudit();
   await updateDoc(doc(firebase.db, COLLECTION, id), {
     status,
+    updatedBy: audit.uid,
+    updatedByName: audit.name,
     updatedAt: serverTimestamp(),
   });
 }
@@ -154,12 +172,15 @@ export async function updateOrderStatus(
 export async function deliverOrder(
   order: Order,
   deliveryDate: Date,
-  uid: string
+  uid?: string
 ): Promise<string[]> {
   if (!order.items || order.items.length === 0) {
     throw new Error("Замовлення без позицій неможливо видати");
   }
 
+  const audit = currentAudit();
+  const createdBy = uid || audit.uid;
+  const createdByName = audit.name;
   const batch = writeBatch(firebase.db);
   const txCollection = collection(firebase.db, "transactions");
   const txTs = Timestamp.fromDate(deliveryDate);
@@ -185,7 +206,10 @@ export async function deliverOrder(
       totalAmount: item.totalAmount,
       note: order.notes ?? null,
       orderId: order.id,
-      createdBy: uid,
+      createdBy,
+      createdByName,
+      updatedBy: createdBy,
+      updatedByName: createdByName,
       createdAt: ts,
       updatedAt: ts,
     });
@@ -195,6 +219,8 @@ export async function deliverOrder(
     status: "delivered" as OrderStatus,
     deliveredAt: txTs,
     transactionIds: newTxIds,
+    updatedBy: createdBy,
+    updatedByName: createdByName,
     updatedAt: ts,
   });
 

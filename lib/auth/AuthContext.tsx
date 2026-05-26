@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -14,6 +15,7 @@ import {
   createUserWithEmailAndPassword,
   signOut as fbSignOut,
   onAuthStateChanged,
+  updateProfile,
   type User,
 } from "firebase/auth";
 import { firebase } from "@/lib/firebase/client";
@@ -26,7 +28,11 @@ type AuthState = {
   userDoc: UserDoc | null;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (
+    email: string,
+    password: string,
+    name: string
+  ) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -37,18 +43,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userDoc, setUserDocState] = useState<UserDoc | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Передає ФІО з форми реєстрації в listener — щоб ensureUserDoc створювався
+  // одним шляхом і ім'я гарантовано потрапило у документ.
+  const pendingNameRef = useRef<string | null>(null);
+
   useEffect(() => {
     const unsub = onAuthStateChanged(firebase.auth, async (user) => {
-      setAuthUser(user);
       if (user) {
+        // Скидаємо stale userDoc, щоб AppLayout не флешнув кабінет старого юзера
+        // поки крутиться await ensureUserDoc для нового.
+        setLoading(true);
+        setUserDocState(null);
+        setAuthUser(user);
         try {
-          const ud = await ensureUserDoc(user);
+          const pendingName = pendingNameRef.current;
+          if (pendingName && (user.displayName ?? "") !== pendingName) {
+            try {
+              await updateProfile(user, { displayName: pendingName });
+            } catch (e) {
+              console.warn("updateProfile failed", e);
+            }
+          }
+          const ud = await ensureUserDoc(user, pendingName);
+          pendingNameRef.current = null;
           setUserDocState(ud);
         } catch (e) {
           console.error("ensureUserDoc failed", e);
           setUserDocState(null);
         }
       } else {
+        setAuthUser(null);
         setUserDocState(null);
       }
       setLoading(false);
@@ -68,13 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async signInWithEmail(email, password) {
       await signInWithEmailAndPassword(firebase.auth, email, password);
     },
-    async signUpWithEmail(email, password) {
-      const cred = await createUserWithEmailAndPassword(
-        firebase.auth,
-        email,
-        password
-      );
-      await ensureUserDoc(cred.user);
+    async signUpWithEmail(email, password, name) {
+      pendingNameRef.current = name.trim() || null;
+      try {
+        await createUserWithEmailAndPassword(firebase.auth, email, password);
+      } catch (e) {
+        pendingNameRef.current = null;
+        throw e;
+      }
     },
     async signOut() {
       await fbSignOut(firebase.auth);

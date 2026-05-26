@@ -27,9 +27,12 @@ async function apiFetch(
   path: string,
   data: Record<string, unknown>
 ): Promise<Response | null> {
-  if (!configured()) return null;
+  if (!configured()) {
+    console.warn("[telegram] skipped — API not configured", { path });
+    return null;
+  }
   try {
-    return await fetch(`${API_BASE}${path}`, {
+    const res = await fetch(`${API_BASE}${path}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -37,8 +40,17 @@ async function apiFetch(
       },
       body: JSON.stringify(data),
     });
+    if (!res.ok) {
+      const text = await res.clone().text().catch(() => "");
+      console.warn("[telegram] non-2xx response", {
+        path,
+        status: res.status,
+        body: text.slice(0, 500),
+      });
+    }
+    return res;
   } catch (e) {
-    console.warn("[telegram] network error", e);
+    console.warn("[telegram] network error", { path, err: e });
     return null;
   }
 }

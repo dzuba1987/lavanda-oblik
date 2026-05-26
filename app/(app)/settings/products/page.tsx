@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { productsCrud, COMMON_UNITS } from "@/lib/data/products";
 import { categoriesCrud } from "@/lib/data/categories";
+import { AuditInfo } from "@/components/AuditInfo";
 import type { Category, Product } from "@/lib/data/types";
 
 type Row = Product;
@@ -116,6 +117,7 @@ export default function ProductsPage() {
         loading={loading}
         searchableText={(it) => `${it.name} ${it.unit ?? ""}`}
         columns={columns}
+        showAuthor
         onCreate={() => {
           setEditing(null);
           setDialogOpen(true);
@@ -286,6 +288,8 @@ function ProductFormDialog({
               </SelectContent>
             </Select>
           </div>
+
+          <AuditInfo item={initial} />
         </div>
 
         <DialogFooter>

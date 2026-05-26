@@ -72,3 +72,25 @@ export function fromInputDate(s: string): Date | null {
   if (!y || !m || !d) return null;
   return new Date(y, m - 1, d, 12, 0, 0);
 }
+
+const rtfFmt = new Intl.RelativeTimeFormat("uk-UA", { numeric: "auto" });
+
+/**
+ * Відносна дата ("щойно", "5 хв тому", "вчора", "3 дні тому"). Старіше 30 днів —
+ * віддає коротку дату формату dd.mm.yy. null/undefined → "—".
+ */
+export function formatRelative(
+  ts: Timestamp | Date | null | undefined
+): string {
+  const d = tsToDate(ts);
+  if (!d) return "—";
+  const diffSec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffSec < 60) return "щойно";
+  if (diffMin < 60) return rtfFmt.format(-diffMin, "minute");
+  if (diffHour < 24) return rtfFmt.format(-diffHour, "hour");
+  if (diffDay <= 30) return rtfFmt.format(-diffDay, "day");
+  return formatDate(d);
+}

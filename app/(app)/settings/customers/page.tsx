@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { CrudPage, type CrudColumn } from "@/components/CrudPage";
 import {
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { AuditInfo } from "@/components/AuditInfo";
 import { customersCrud } from "@/lib/data/customers";
 import type { Customer } from "@/lib/data/types";
 
@@ -71,15 +72,43 @@ export default function CustomersPage() {
       render: (it) => (
         <div className="space-y-0.5">
           <div className="font-medium">{it.name}</div>
-          {(it.age != null || it.source) && (
+          {(it.age != null || it.source || it.phone) && (
             <div className="text-xs text-muted-foreground md:hidden">
               {it.age != null && `${it.age} р.`}
-              {it.age != null && it.source && " · "}
+              {it.age != null && (it.source || it.phone) && " · "}
               {it.source}
+              {it.source && it.phone && " · "}
+              {it.phone && (
+                <a
+                  href={`tel:${it.phone.replace(/\s/g, "")}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-violet-600 hover:underline"
+                >
+                  {it.phone}
+                </a>
+              )}
             </div>
           )}
         </div>
       ),
+    },
+    {
+      key: "phone",
+      label: "Телефон",
+      hideOnMobile: true,
+      render: (it) =>
+        it.phone ? (
+          <a
+            href={`tel:${it.phone.replace(/\s/g, "")}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 text-sm text-violet-600 hover:underline"
+          >
+            <Phone className="h-3 w-3" />
+            {it.phone}
+          </a>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        ),
     },
     {
       key: "age",
@@ -113,9 +142,10 @@ export default function CustomersPage() {
         items={items}
         loading={loading}
         searchableText={(it) =>
-          `${it.name} ${it.source ?? ""} ${it.notes ?? ""}`
+          `${it.name} ${it.source ?? ""} ${it.phone ?? ""} ${it.notes ?? ""}`
         }
         columns={columns}
+        showAuthor
         onCreate={() => {
           setEditing(null);
           setDialogOpen(true);
@@ -154,6 +184,7 @@ function CustomerFormDialog({
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [source, setSource] = useState("");
+  const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -162,6 +193,7 @@ function CustomerFormDialog({
       setName(initial?.name ?? "");
       setAge(initial?.age != null ? String(initial.age) : "");
       setSource(initial?.source ?? "");
+      setPhone(initial?.phone ?? "");
       setNotes(initial?.notes ?? "");
     }
   }, [open, initial]);
@@ -183,6 +215,7 @@ function CustomerFormDialog({
         name: name.trim(),
         age: parsedAge,
         source: source.trim() || null,
+        phone: phone.trim() || null,
         notes: notes.trim() || null,
       };
       if (initial) {
@@ -220,6 +253,19 @@ function CustomerFormDialog({
               onChange={(e) => setName(e.target.value)}
               placeholder="Ірина Василюк"
               autoFocus
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="cust-phone">Телефон (опц.)</Label>
+            <Input
+              id="cust-phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+380 67 123 45 67"
             />
           </div>
 
@@ -263,6 +309,8 @@ function CustomerFormDialog({
               rows={3}
             />
           </div>
+
+          <AuditInfo item={initial} />
         </div>
 
         <DialogFooter>

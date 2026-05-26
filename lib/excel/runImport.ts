@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { firebase } from "@/lib/firebase/client";
 import { DEFAULT_CATEGORY_COLORS } from "@/lib/data/categories";
+import { currentAudit } from "@/lib/data/audit";
 import type {
   Category,
   Customer,
@@ -39,6 +40,8 @@ export async function runImport(
   uid: string,
   onProgress?: (p: ImportProgress) => void
 ): Promise<ImportSummary> {
+  const audit = currentAudit();
+  const auditName = audit.name;
   const summary: ImportSummary = {
     transactionsCreated: 0,
     categoriesCreated: 0,
@@ -165,6 +168,15 @@ export async function runImport(
       }
     };
 
+    const auditPayload = {
+      createdBy: uid,
+      createdByName: auditName,
+      updatedBy: uid,
+      updatedByName: auditName,
+      createdAt: ts,
+      updatedAt: ts,
+    };
+
     for (const cat of newCategories.values()) {
       enqueue(() => {
         batch.set(doc(firebase.db, "categories", cat.id), {
@@ -172,7 +184,7 @@ export async function runImport(
           type: cat.type,
           color: cat.color,
           sortOrder: 0,
-          createdAt: ts,
+          ...auditPayload,
         });
       });
     }
@@ -183,7 +195,7 @@ export async function runImport(
           unit: "шт",
           defaultPrice: null,
           defaultCategoryId: null,
-          createdAt: ts,
+          ...auditPayload,
         });
       });
     }
@@ -193,7 +205,7 @@ export async function runImport(
           name: s.name,
           contact: null,
           notes: null,
-          createdAt: ts,
+          ...auditPayload,
         });
       });
     }
@@ -203,8 +215,9 @@ export async function runImport(
           name: c.name,
           age: null,
           source: null,
+          phone: null,
           notes: null,
-          createdAt: ts,
+          ...auditPayload,
         });
       });
     }
@@ -301,6 +314,9 @@ export async function runImport(
       totalAmount: row.totalAmount,
       note: row.note,
       createdBy: uid,
+      createdByName: auditName,
+      updatedBy: uid,
+      updatedByName: auditName,
       createdAt: ts,
       updatedAt: ts,
     });

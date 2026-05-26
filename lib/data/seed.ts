@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { firebase } from "@/lib/firebase/client";
 import { DEFAULT_CATEGORY_COLORS } from "./categories";
+import { currentAudit } from "./audit";
 import type { OrderItem, OrderStatus, TransactionType } from "./types";
 
 const SEED_COLLECTIONS = [
@@ -87,6 +88,14 @@ function dateNDaysAgo(n: number) {
 
 export async function seedTestData(uid: string): Promise<SeedCounts> {
   const db = firebase.db;
+  const audit = currentAudit();
+  const auditName = audit.name;
+  const auditFields = {
+    createdBy: uid,
+    createdByName: auditName,
+    updatedBy: uid,
+    updatedByName: auditName,
+  };
   const counts: SeedCounts = {
     categories: 0,
     products: 0,
@@ -106,7 +115,9 @@ export async function seedTestData(uid: string): Promise<SeedCounts> {
       color: DEFAULT_CATEGORY_COLORS[idx % DEFAULT_CATEGORY_COLORS.length],
       sortOrder: idx,
       seed: true,
+      ...auditFields,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
     catRefs.set(c.name, { id: ref.id, name: c.name, type: c.type });
     counts.categories++;
@@ -123,7 +134,9 @@ export async function seedTestData(uid: string): Promise<SeedCounts> {
       defaultPrice: p.price,
       defaultCategoryId: cat.id,
       seed: true,
+      ...auditFields,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
     productRefs.push({ id: ref.id, name: p.name, price: p.price, categoryName: p.categoryName });
     counts.products++;
@@ -137,7 +150,9 @@ export async function seedTestData(uid: string): Promise<SeedCounts> {
       contact: s.contact || null,
       notes: null,
       seed: true,
+      ...auditFields,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
     supplierRefs.push({ id: ref.id, name: s.name });
     counts.suppliers++;
@@ -150,9 +165,12 @@ export async function seedTestData(uid: string): Promise<SeedCounts> {
       name,
       age: randInt(22, 60),
       source: pick(SOURCES),
+      phone: null,
       notes: null,
       seed: true,
+      ...auditFields,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
     customerRefs.push({ id: ref.id, name });
     counts.customers++;
@@ -223,7 +241,7 @@ export async function seedTestData(uid: string): Promise<SeedCounts> {
         quantity,
         totalAmount: unitPrice * quantity,
         note: null,
-        createdBy: uid,
+        ...auditFields,
         seed: true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -264,7 +282,7 @@ export async function seedTestData(uid: string): Promise<SeedCounts> {
         quantity,
         totalAmount: baseAmount * quantity,
         note: null,
-        createdBy: uid,
+        ...auditFields,
         seed: true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -301,6 +319,8 @@ async function seedOrders(
   customerRefs: CustRef[]
 ): Promise<number> {
   const db = firebase.db;
+  const audit = currentAudit();
+  const auditName = audit.name;
   const now = new Date();
 
   function daysFromNow(n: number): Date {
@@ -420,14 +440,21 @@ async function seedOrders(
     batch.set(ref, {
       customerId: cust?.id ?? null,
       customerName: seedOrder.customerName,
+      phone: null,
       items,
       totalAmount,
       deadline: deadline ? Timestamp.fromDate(deadline) : null,
       status: seedOrder.status,
       notes: seedOrder.notes,
+      photos: [],
+      delivery: null,
+      commentsCount: 0,
       transactionIds: [],
       deliveredAt: null,
       createdBy: uid,
+      createdByName: auditName,
+      updatedBy: uid,
+      updatedByName: auditName,
       seed: true,
       createdAt: Timestamp.fromDate(createdAt),
       updatedAt: Timestamp.fromDate(createdAt),

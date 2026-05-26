@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { suppliersCrud } from "@/lib/data/suppliers";
+import { AuditInfo } from "@/components/AuditInfo";
 import type { Supplier } from "@/lib/data/types";
 
 type Row = Supplier;
@@ -91,6 +92,7 @@ export default function SuppliersPage() {
         loading={loading}
         searchableText={(it) => `${it.name} ${it.contact ?? ""} ${it.notes ?? ""}`}
         columns={columns}
+        showAuthor
         onCreate={() => {
           setEditing(null);
           setDialogOpen(true);
@@ -208,6 +210,8 @@ function SupplierFormDialog({
               rows={3}
             />
           </div>
+
+          <AuditInfo item={initial} />
         </div>
 
         <DialogFooter>

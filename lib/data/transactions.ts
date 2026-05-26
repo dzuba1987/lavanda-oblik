@@ -13,6 +13,7 @@ import {
   type QueryConstraint,
 } from "firebase/firestore";
 import { firebase } from "@/lib/firebase/client";
+import { currentAudit } from "./audit";
 import type { Transaction, TransactionType } from "./types";
 
 const COLLECTION = "transactions";
@@ -64,14 +65,20 @@ export async function listTransactions(
 
 export async function createTransaction(
   input: TransactionInput,
-  uid: string
+  uid?: string
 ): Promise<string> {
+  const audit = currentAudit();
+  const createdBy = uid || audit.uid;
+  const ts = serverTimestamp();
   const ref = await addDoc(col(), {
     ...input,
     date: Timestamp.fromDate(input.date),
-    createdBy: uid,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdBy,
+    createdByName: audit.name,
+    updatedBy: createdBy,
+    updatedByName: audit.name,
+    createdAt: ts,
+    updatedAt: ts,
   });
   return ref.id;
 }
@@ -80,9 +87,12 @@ export async function updateTransaction(
   id: string,
   input: TransactionInput
 ): Promise<void> {
+  const audit = currentAudit();
   await updateDoc(doc(firebase.db, COLLECTION, id), {
     ...input,
     date: Timestamp.fromDate(input.date),
+    updatedBy: audit.uid,
+    updatedByName: audit.name,
     updatedAt: serverTimestamp(),
   });
 }

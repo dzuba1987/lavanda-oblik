@@ -2,6 +2,19 @@ import type { Timestamp } from "firebase/firestore";
 
 export type Role = "admin" | "seller" | "viewer";
 
+/**
+ * Спільні audit-поля для всіх документів — щоб бачити "хто додавав/змінював".
+ * Старі записи (до впровадження) не мають цих полів — рендер має толерувати undefined.
+ */
+export interface AuditFields {
+  createdBy?: string;
+  createdByName?: string | null;
+  createdAt: Timestamp;
+  updatedBy?: string;
+  updatedByName?: string | null;
+  updatedAt?: Timestamp;
+}
+
 export interface UserDoc {
   uid: string;
   email: string;
@@ -21,39 +34,37 @@ export interface TelegramSettings {
 
 export type TransactionType = "income" | "expense";
 
-export interface Category {
+export interface Category extends AuditFields {
   id: string;
   name: string;
   type: TransactionType;
   color: string;
   sortOrder: number;
-  createdAt: Timestamp;
 }
 
-export interface Product {
+export interface Product extends AuditFields {
   id: string;
   name: string;
   unit: string;
   defaultPrice: number | null;
   defaultCategoryId: string | null;
-  createdAt: Timestamp;
 }
 
-export interface Supplier {
+export interface Supplier extends AuditFields {
   id: string;
   name: string;
   contact: string | null;
   notes: string | null;
-  createdAt: Timestamp;
 }
 
-export interface Customer {
+export interface Customer extends AuditFields {
   id: string;
   name: string;
   age: number | null;
   source: string | null;
+  /** Телефон у вільному форматі — використовується для tel: link. */
+  phone: string | null;
   notes: string | null;
-  createdAt: Timestamp;
 }
 
 export interface Transaction {
@@ -75,6 +86,9 @@ export interface Transaction {
   /** Якщо транзакцію створено з замовлення — посилання на нього. */
   orderId?: string | null;
   createdBy: string;
+  createdByName?: string | null;
+  updatedBy?: string;
+  updatedByName?: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -152,11 +166,19 @@ export interface Order {
   id: string;
   customerId: string | null;
   customerName: string | null;
+  /** Контактний телефон для саме цього замовлення (може відрізнятись від клієнтового). */
+  phone: string | null;
   items: OrderItem[];
   totalAmount: number;
   deadline: Timestamp | null;
   status: OrderStatus;
   notes: string | null;
+  /**
+   * Денормалізований лічильник коментарів. Інкрементується при addComment,
+   * декрементується при deleteComment. Дозволяє показувати індикатор у списку
+   * без N+1 запитів до subcollection.
+   */
+  commentsCount: number;
   /** ID транзакцій, створених при переході в delivered. */
   transactionIds: string[];
   /**
@@ -169,6 +191,9 @@ export interface Order {
   /** Інформація про доставку. null = не вказано. */
   delivery: Delivery | null;
   createdBy: string;
+  createdByName?: string | null;
+  updatedBy?: string;
+  updatedByName?: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   deliveredAt: Timestamp | null;

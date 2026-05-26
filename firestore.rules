@@ -115,7 +115,8 @@ service cloud.firestore {
         && request.resource.data.photos.size() <= 5
         && (request.resource.data.delivery == null
             || request.resource.data.delivery.method in ['nova_poshta', 'ukrposhta', 'meest', 'courier', 'self_pickup', 'other'])
-        && request.resource.data.createdBy == request.auth.uid;
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
 
       allow update: if isAdmin()
         && request.resource.data.status in ['new', 'confirmed', 'in_progress', 'ready', 'delivered', 'cancelled']
@@ -123,7 +124,9 @@ service cloud.firestore {
         && request.resource.data.photos is list
         && request.resource.data.photos.size() <= 5
         && (request.resource.data.delivery == null
-            || request.resource.data.delivery.method in ['nova_poshta', 'ukrposhta', 'meest', 'courier', 'self_pickup', 'other']);
+            || request.resource.data.delivery.method in ['nova_poshta', 'ukrposhta', 'meest', 'courier', 'self_pickup', 'other'])
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy;
 
       allow delete: if isAdmin();
 
@@ -165,7 +168,8 @@ service cloud.firestore {
         && isNonNegative(request.resource.data.unitPrice)
         && isNonNegative(request.resource.data.quantity)
         && isNonNegative(request.resource.data.totalAmount)
-        && request.resource.data.createdBy == request.auth.uid;
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
 
       allow update: if isAdmin()
         && request.resource.data.date is timestamp
@@ -173,7 +177,9 @@ service cloud.firestore {
         && isNonEmptyString(request.resource.data.categoryId)
         && isNonNegative(request.resource.data.unitPrice)
         && isNonNegative(request.resource.data.quantity)
-        && isNonNegative(request.resource.data.totalAmount);
+        && isNonNegative(request.resource.data.totalAmount)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy;
 
       allow delete: if isAdmin();
     }

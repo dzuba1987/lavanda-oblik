@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { AuditInfo } from "@/components/AuditInfo";
 import { categoriesCrud, DEFAULT_CATEGORY_COLORS } from "@/lib/data/categories";
 import type { Category, TransactionType } from "@/lib/data/types";
 
@@ -124,6 +125,7 @@ export default function CategoriesPage() {
         loading={loading}
         searchableText={(it) => `${it.name} ${TYPE_LABELS[it.type]}`}
         columns={columns}
+        showAuthor
         onCreate={openCreate}
         onEdit={openEdit}
         onDelete={handleDelete}
@@ -250,6 +252,8 @@ function CategoryFormDialog({
               ))}
             </div>
           </div>
+
+          <AuditInfo item={initial} />
         </div>
 
         <DialogFooter>

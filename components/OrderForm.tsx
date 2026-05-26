@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { OrderComments } from "@/components/OrderComments";
+import { AuditInfo } from "@/components/AuditInfo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -91,6 +92,7 @@ export function OrderForm({
 }: OrderFormProps) {
   const { authUser, userDoc } = useAuth();
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [phone, setPhone] = useState("");
   const [items, setItems] = useState<ItemRow[]>([]);
   const [deadline, setDeadline] = useState("");
   const [notes, setNotes] = useState("");
@@ -131,6 +133,10 @@ export function OrderForm({
     if (!open) return;
     if (initial) {
       setCustomerId(initial.customerId);
+      const initialCustomer = initial.customerId
+        ? customers.find((c) => c.id === initial.customerId)
+        : null;
+      setPhone(initial.phone ?? initialCustomer?.phone ?? "");
       setItems(
         initial.items.map((it, i) => ({
           id: `init-${i}`,
@@ -153,6 +159,7 @@ export function OrderForm({
       newOrderIdRef.current = initial.id;
     } else {
       setCustomerId(null);
+      setPhone("");
       setItems([emptyItem()]);
       setDeadline("");
       setNotes("");
@@ -165,7 +172,18 @@ export function OrderForm({
     setLocalCategories([]);
     setLocalProducts([]);
     setLocalCustomers([]);
-  }, [open, initial]);
+  }, [open, initial, customers]);
+
+  // М'який backfill телефону: якщо форму відкрито без збереженого phone, але
+  // у клієнта є phone у словнику customers — підставити. Спрацьовує, коли
+  // customers догружаються після відкриття форми. Не перезаписує phone,
+  // якщо user його вже вписав вручну.
+  useEffect(() => {
+    if (!open || phone) return;
+    if (!customerId) return;
+    const c = allCustomers.find((x) => x.id === customerId);
+    if (c?.phone) setPhone(c.phone);
+  }, [open, customerId, allCustomers, phone]);
 
   // Cleanup object URLs on unmount/close
   useEffect(() => {
@@ -238,6 +256,7 @@ export function OrderForm({
       name: label,
       age: null,
       source: null,
+      phone: null,
       notes: null,
     });
     const fresh: Customer = {
@@ -245,6 +264,7 @@ export function OrderForm({
       name: label,
       age: null,
       source: null,
+      phone: null,
       notes: null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createdAt: new Date() as any,
@@ -405,6 +425,7 @@ export function OrderForm({
       const input: OrderInput = {
         customerId,
         customerName: customer?.name ?? null,
+        phone: phone.trim() || null,
         items: validatedItems,
         totalAmount: validatedItems.reduce(
           (acc, it) => acc + it.totalAmount,
@@ -464,9 +485,28 @@ export function OrderForm({
                 hint: c.source ?? undefined,
               }))}
               value={customerId}
-              onChange={(id) => setCustomerId(id)}
+              onChange={(id) => {
+                setCustomerId(id);
+                if (id) {
+                  const c = allCustomers.find((x) => x.id === id);
+                  if (c?.phone) setPhone(c.phone);
+                }
+              }}
               placeholder="Не обрано"
               onCreate={createCustomerInline}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="order-phone">Телефон (опц.)</Label>
+            <Input
+              id="order-phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+380 67 123 45 67"
             />
           </div>
 
@@ -694,6 +734,8 @@ export function OrderForm({
           </div>
 
           {initial && <OrderComments orderId={initial.id} />}
+
+          <AuditInfo item={initial} />
         </div>
 
         <DialogFooter>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,16 +12,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/AuthContext";
 
+const PASSWORD_MIN = 7;
+
 export default function LoginPage() {
   const router = useRouter();
   const { authUser, loading, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+
+  // Спільні поля
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Поля лише для signup
+  const [fullName, setFullName] = useState("");
+  const [captcha, setCaptcha] = useState<CaptchaState>(() => newCaptcha());
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!loading && authUser) router.replace("/dashboard/");
   }, [authUser, loading, router]);
+
+  const refreshCaptcha = useCallback(() => {
+    setCaptcha(newCaptcha());
+    setCaptchaAnswer("");
+  }, []);
 
   async function handleGoogle() {
     setBusy(true);
@@ -34,20 +49,46 @@ export default function LoginPage() {
     }
   }
 
-  async function handleEmail(action: "signin" | "signup") {
+  async function handleSignIn() {
     if (!email || !password) {
       toast.error("Введіть email і пароль");
       return;
     }
     setBusy(true);
     try {
-      if (action === "signin") {
-        await signInWithEmail(email, password);
-      } else {
-        await signUpWithEmail(email, password);
-      }
+      await signInWithEmail(email, password);
     } catch (e) {
       toast.error(messageFor(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSignUp() {
+    const name = fullName.trim();
+    if (!name) {
+      toast.error("Вкажіть ФІО");
+      return;
+    }
+    if (!email) {
+      toast.error("Введіть email");
+      return;
+    }
+    if (password.length < PASSWORD_MIN) {
+      toast.error(`Пароль має бути не менше ${PASSWORD_MIN} символів`);
+      return;
+    }
+    if (Number(captchaAnswer) !== captcha.answer) {
+      toast.error("Невірна відповідь на каптчу");
+      refreshCaptcha();
+      return;
+    }
+    setBusy(true);
+    try {
+      await signUpWithEmail(email, password, name);
+    } catch (e) {
+      toast.error(messageFor(e));
+      refreshCaptcha();
     } finally {
       setBusy(false);
     }
@@ -100,15 +141,19 @@ export default function LoginPage() {
             </TabsList>
 
             <TabsContent value="signin" className="space-y-3 pt-3">
-              <EmailForm
-                email={email}
-                password={password}
-                setEmail={setEmail}
-                setPassword={setPassword}
+              <EmailField
+                value={email}
+                onChange={setEmail}
+                autoComplete="email"
+              />
+              <PasswordField
+                value={password}
+                onChange={setPassword}
+                autoComplete="current-password"
               />
               <Button
                 className="w-full bg-violet-600 hover:bg-violet-700"
-                onClick={() => handleEmail("signin")}
+                onClick={handleSignIn}
                 disabled={busy}
               >
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -117,15 +162,37 @@ export default function LoginPage() {
             </TabsContent>
 
             <TabsContent value="signup" className="space-y-3 pt-3">
-              <EmailForm
-                email={email}
-                password={password}
-                setEmail={setEmail}
-                setPassword={setPassword}
+              <div className="space-y-1">
+                <Label htmlFor="fullName">ФІО</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  autoComplete="name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Іваненко Іван Іванович"
+                />
+              </div>
+              <EmailField
+                value={email}
+                onChange={setEmail}
+                autoComplete="email"
+              />
+              <PasswordField
+                value={password}
+                onChange={setPassword}
+                autoComplete="new-password"
+                hint={`Мінімум ${PASSWORD_MIN} символів`}
+              />
+              <CaptchaField
+                captcha={captcha}
+                answer={captchaAnswer}
+                onChange={setCaptchaAnswer}
+                onRefresh={refreshCaptcha}
               />
               <Button
                 className="w-full bg-violet-600 hover:bg-violet-700"
-                onClick={() => handleEmail("signup")}
+                onClick={handleSignUp}
                 disabled={busy}
               >
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -142,42 +209,102 @@ export default function LoginPage() {
   );
 }
 
-function EmailForm({
-  email,
-  password,
-  setEmail,
-  setPassword,
+function EmailField({
+  value,
+  onChange,
+  autoComplete,
 }: {
-  email: string;
-  password: string;
-  setEmail: (v: string) => void;
-  setPassword: (v: string) => void;
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete: string;
 }) {
   return (
-    <>
-      <div className="space-y-1">
-        <Label htmlFor="email">Email</Label>
+    <div className="space-y-1">
+      <Label htmlFor="email">Email</Label>
+      <Input
+        id="email"
+        type="email"
+        autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="you@example.com"
+      />
+    </div>
+  );
+}
+
+function PasswordField({
+  value,
+  onChange,
+  autoComplete,
+  hint,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete: string;
+  hint?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label htmlFor="password">Пароль</Label>
+      <Input
+        id="password"
+        type="password"
+        autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="••••••••"
+      />
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+type CaptchaState = { a: number; b: number; answer: number };
+
+function newCaptcha(): CaptchaState {
+  const a = Math.floor(Math.random() * 9) + 1;
+  const b = Math.floor(Math.random() * 9) + 1;
+  return { a, b, answer: a + b };
+}
+
+function CaptchaField({
+  captcha,
+  answer,
+  onChange,
+  onRefresh,
+}: {
+  captcha: CaptchaState;
+  answer: string;
+  onChange: (v: string) => void;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label htmlFor="captcha">
+        Скільки буде {captcha.a} + {captcha.b}?
+      </Label>
+      <div className="flex gap-2">
         <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          id="captcha"
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={answer}
+          onChange={(e) => onChange(e.target.value.replace(/[^\d-]/g, ""))}
+          placeholder="?"
         />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={onRefresh}
+          aria-label="Оновити каптчу"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
       </div>
-      <div className="space-y-1">
-        <Label htmlFor="password">Пароль</Label>
-        <Input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-        />
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -214,7 +341,7 @@ function messageFor(e: unknown): string {
     case "auth/email-already-in-use":
       return "Такий email уже зареєстровано";
     case "auth/weak-password":
-      return "Пароль закороткий (мін. 6 символів)";
+      return `Пароль закороткий (мін. ${PASSWORD_MIN} символів)`;
     case "auth/popup-closed-by-user":
       return "Вікно входу закрито";
     case "auth/network-request-failed":

@@ -12,11 +12,13 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { firebase } from "@/lib/firebase/client";
+import { currentAudit } from "./audit";
 
 export type WithId<T> = T & { id: string };
 
 /**
  * Generic CRUD-фабрика для будь-якої Firestore-колекції.
+ * Автоматично проставляє audit-поля (createdBy/Name, updatedBy/Name, createdAt, updatedAt).
  */
 export function makeCrud<T extends DocumentData>(
   collectionName: string,
@@ -32,16 +34,26 @@ export function makeCrud<T extends DocumentData>(
     },
 
     async create(data: Omit<T, "createdAt">): Promise<string> {
+      const { uid, name } = currentAudit();
+      const ts = serverTimestamp();
       const ref = await addDoc(col(), {
         ...data,
-        createdAt: serverTimestamp(),
+        createdBy: uid,
+        createdByName: name,
+        updatedBy: uid,
+        updatedByName: name,
+        createdAt: ts,
+        updatedAt: ts,
       });
       return ref.id;
     },
 
     async update(id: string, data: Partial<T>): Promise<void> {
+      const { uid, name } = currentAudit();
       await updateDoc(doc(firebase.db, collectionName, id), {
         ...data,
+        updatedBy: uid,
+        updatedByName: name,
         updatedAt: serverTimestamp(),
       } as DocumentData);
     },

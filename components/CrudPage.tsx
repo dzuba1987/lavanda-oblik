@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import type { AuditFields } from "@/lib/data/types";
+import { formatRelative } from "@/lib/utils/format";
 
 export type CrudColumn<T> = {
   key: string;
@@ -49,6 +51,11 @@ export type CrudPageProps<T extends { id: string }> = {
   searchPlaceholder?: string;
   searchableText: (item: T) => string;
   columns: CrudColumn<T>[];
+  /**
+   * Якщо true і елементи задовольняють AuditFields — рендериться окрема колонка
+   * "Автор" з ім'ям того, хто останнім редагував + відносна дата.
+   */
+  showAuthor?: boolean;
   onCreate: () => void;
   onEdit: (item: T) => void;
   onDelete: (item: T) => Promise<void>;
@@ -67,6 +74,7 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
     searchPlaceholder = "Пошук…",
     searchableText,
     columns,
+    showAuthor = false,
     onCreate,
     onEdit,
     onDelete,
@@ -74,6 +82,35 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
     emptyTitle = "Поки нічого нема",
     emptyDescription = "Додайте перший запис натиснувши кнопку нижче.",
   } = props;
+
+  const allColumns: CrudColumn<T>[] = showAuthor
+    ? [
+        ...columns,
+        {
+          key: "__author__",
+          label: "Автор",
+          hideOnMobile: true,
+          className: "w-44",
+          render: (it) => {
+            const a = it as T & AuditFields;
+            const name =
+              a.updatedByName ?? a.createdByName ?? null;
+            const ts = a.updatedAt ?? a.createdAt;
+            if (!name && !ts) {
+              return <span className="text-sm text-muted-foreground">—</span>;
+            }
+            return (
+              <div className="flex flex-col gap-0.5 text-sm">
+                <span className="truncate">{name ?? "—"}</span>
+                <span className="text-xs text-muted-foreground">
+                  {formatRelative(ts)}
+                </span>
+              </div>
+            );
+          },
+        },
+      ]
+    : columns;
 
   const [search, setSearch] = useState("");
   const [pendingDelete, setPendingDelete] = useState<T | null>(null);
@@ -170,7 +207,7 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
               <table className="w-full text-sm">
                 <thead className="border-b text-left text-xs uppercase text-muted-foreground">
                   <tr>
-                    {columns.map((c) => (
+                    {allColumns.map((c) => (
                       <th
                         key={c.key}
                         className={cn("px-4 py-2 font-medium", c.className)}
@@ -185,9 +222,10 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
                   {filtered.map((item) => (
                     <tr
                       key={item.id}
-                      className="border-b last:border-b-0 hover:bg-accent/50"
+                      onClick={() => onEdit(item)}
+                      className="cursor-pointer border-b last:border-b-0 hover:bg-accent/50"
                     >
-                      {columns.map((c) => (
+                      {allColumns.map((c) => (
                         <td
                           key={c.key}
                           className={cn("px-4 py-2", c.className)}
@@ -195,7 +233,10 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
                           {c.render(item)}
                         </td>
                       ))}
-                      <td className="px-2 py-2 text-right">
+                      <td
+                        className="px-2 py-2 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <RowActions
                           onEdit={() => onEdit(item)}
                           onDelete={() => setPendingDelete(item)}
