@@ -31,6 +31,11 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { deleteUserDoc, listUsers, updateUserRole } from "@/lib/data/users";
 import type { Role, UserDoc } from "@/lib/data/types";
+import { formatRelative, tsToDate } from "@/lib/utils/format";
+import { cn } from "@/lib/utils";
+
+/** Скільки секунд після останнього heartbeat вважати юзера онлайн. */
+const ONLINE_THRESHOLD_SEC = 120;
 
 const ROLE_LABELS: Record<Role, string> = {
   admin: "Адміністратор",
@@ -68,6 +73,14 @@ export default function UsersSettingsPage() {
 
   useEffect(() => {
     if (isAdmin) refresh();
+  }, [isAdmin, refresh]);
+
+  // Авто-оновлення кожні 30с — щоб presence-індикатори показували поточний стан
+  // навіть без перезавантаження сторінки.
+  useEffect(() => {
+    if (!isAdmin) return;
+    const id = window.setInterval(refresh, 30_000);
+    return () => window.clearInterval(id);
   }, [isAdmin, refresh]);
 
   async function handleRoleChange(uid: string, newRole: Role) {
@@ -140,7 +153,8 @@ export default function UsersSettingsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Користувач</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead className="hidden md:table-cell">Email</TableHead>
+                  <TableHead className="hidden md:table-cell">Статус</TableHead>
                   <TableHead>Роль</TableHead>
                   <TableHead className="hidden text-right md:table-cell">
                     Зареєстровано
@@ -153,10 +167,19 @@ export default function UsersSettingsPage() {
                   return (
                     <TableRow key={u.uid}>
                       <TableCell className="font-medium">
-                        {u.name || "—"}
+                        <div>{u.name || "—"}</div>
+                        <div className="text-xs text-muted-foreground md:hidden">
+                          {u.email}
+                        </div>
+                        <div className="mt-0.5 md:hidden">
+                          <PresenceBadge lastSeenAt={u.lastSeenAt} />
+                        </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="hidden text-muted-foreground md:table-cell">
                         {u.email}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <PresenceBadge lastSeenAt={u.lastSeenAt} />
                       </TableCell>
                       <TableCell>
                         {isSelf ? (
@@ -255,4 +278,29 @@ function formatDate(ts: UserDoc["createdAt"]): string {
     month: "short",
     year: "numeric",
   });
+}
+
+function PresenceBadge({ lastSeenAt }: { lastSeenAt?: UserDoc["lastSeenAt"] }) {
+  const d = tsToDate(lastSeenAt);
+  if (!d) {
+    return <span className="text-xs text-muted-foreground">ще не входив</span>;
+  }
+  const diffSec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  const isOnline = diffSec < ONLINE_THRESHOLD_SEC;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 text-xs",
+        isOnline ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block h-2 w-2 rounded-full",
+          isOnline ? "bg-emerald-500" : "bg-muted-foreground/40"
+        )}
+      />
+      {isOnline ? "онлайн" : formatRelative(lastSeenAt)}
+    </span>
+  );
 }

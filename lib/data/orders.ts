@@ -15,7 +15,7 @@ import {
   type QueryConstraint,
 } from "firebase/firestore";
 import { firebase } from "@/lib/firebase/client";
-import { notifyNewOrder } from "@/lib/notify/telegram";
+import { notifyNewOrder, notifyOrderStatusChange } from "@/lib/notify/telegram";
 import { formatDate } from "@/lib/utils/format";
 import { currentAudit } from "./audit";
 import type {
@@ -154,10 +154,17 @@ export async function updateOrder(
  * Для першого переходу в 'ready' (створення транзакцій income) — використовуйте
  * completeOrder. Для повторного ready (коли transactionIds вже не порожній)
  * можна викликати цей метод напряму, щоб не дублювати транзакції.
+ *
+ * Якщо передано `meta.previousStatus` і він відрізняється від нового —
+ * автоматично шле TG-нотифікацію про зміну статусу.
  */
 export async function updateOrderStatus(
   id: string,
-  status: OrderStatus
+  status: OrderStatus,
+  meta?: {
+    previousStatus?: OrderStatus;
+    customerName?: string | null;
+  }
 ): Promise<void> {
   const audit = currentAudit();
   await updateDoc(doc(firebase.db, COLLECTION, id), {
@@ -166,6 +173,16 @@ export async function updateOrderStatus(
     updatedByName: audit.name,
     updatedAt: serverTimestamp(),
   });
+
+  if (meta?.previousStatus && meta.previousStatus !== status) {
+    notifyOrderStatusChange({
+      orderId: id,
+      customerName: meta.customerName ?? null,
+      changedByName: audit.name,
+      fromStatus: meta.previousStatus,
+      toStatus: status,
+    }).catch((e) => console.warn("notifyOrderStatusChange failed", e));
+  }
 }
 
 /**
@@ -272,6 +289,18 @@ export async function completeOrder(
   });
 
   await batch.commit();
+
+  // Сповіщення про зміну статусу — fire-and-forget, не блокує повернення.
+  if (order.status !== "ready") {
+    notifyOrderStatusChange({
+      orderId: order.id,
+      customerName: order.customerName,
+      changedByName: createdByName,
+      fromStatus: order.status,
+      toStatus: "ready",
+    }).catch((e) => console.warn("notifyOrderStatusChange failed", e));
+  }
+
   return newTxIds;
 }
 

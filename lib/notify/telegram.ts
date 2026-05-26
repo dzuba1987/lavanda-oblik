@@ -130,6 +130,33 @@ export async function notifyNewOrder(payload: NewOrderPayload): Promise<void> {
   });
 }
 
+export type OrderStatusChangePayload = {
+  orderId: string;
+  customerName: string | null;
+  changedByName: string | null;
+  fromStatus: string;
+  toStatus: string;
+};
+
+/**
+ * Alert admins/team about an order status change. Server filters analogous to
+ * notifyNewOrder. Опуск settings.notifyOrderStatus === false вимикає.
+ */
+export async function notifyOrderStatusChange(
+  payload: OrderStatusChangePayload
+): Promise<void> {
+  if (!configured()) return;
+  const settings = await getTelegramSettings();
+  if (settings && settings.notifyOrderStatus === false) return;
+  await apiFetch("/lavanda/telegram/order-status", {
+    orderId: payload.orderId,
+    customerName: payload.customerName ?? "",
+    changedByName: payload.changedByName ?? "",
+    fromStatus: payload.fromStatus,
+    toStatus: payload.toStatus,
+  });
+}
+
 /**
  * Smoke-test "send me a message" з UI налаштувань. Повертає {ok, error?},
  * щоб UI міг показати toast результат.

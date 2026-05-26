@@ -19,8 +19,10 @@ import {
   type User,
 } from "firebase/auth";
 import { firebase } from "@/lib/firebase/client";
-import { ensureUserDoc, getUserDoc } from "@/lib/data/users";
+import { ensureUserDoc, getUserDoc, touchUserPresence } from "@/lib/data/users";
 import type { UserDoc } from "@/lib/data/types";
+
+const PRESENCE_INTERVAL_MS = 60_000;
 
 type AuthState = {
   loading: boolean;
@@ -79,6 +81,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return () => unsub();
   }, []);
+
+  // Presence heartbeat — оновлює users/{uid}.lastSeenAt поки відкритий таб.
+  // Skip коли вкладка прихована — не засмічуємо writes у Firestore коли користувач
+  // переключився, але session жива.
+  useEffect(() => {
+    if (!authUser) return;
+    const uid = authUser.uid;
+
+    const tick = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      touchUserPresence(uid);
+    };
+
+    tick();
+    const id = window.setInterval(tick, PRESENCE_INTERVAL_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [authUser]);
 
   const value: AuthState = {
     loading,

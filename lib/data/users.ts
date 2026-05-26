@@ -36,6 +36,21 @@ export async function deleteUserDoc(uid: string): Promise<void> {
   await deleteDoc(doc(firebase.db, USERS, uid));
 }
 
+/**
+ * Heartbeat: оновлює users/{uid}.lastSeenAt. Викликається періодично з
+ * AuthContext поки користувач у застосунку. Помилки не кидаємо — це
+ * вторинна функціональність.
+ */
+export async function touchUserPresence(uid: string): Promise<void> {
+  try {
+    await updateDoc(doc(firebase.db, USERS, uid), {
+      lastSeenAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.warn("touchUserPresence failed", e);
+  }
+}
+
 export async function getUserDoc(uid: string): Promise<UserDoc | null> {
   const snap = await getDoc(doc(firebase.db, USERS, uid));
   if (!snap.exists()) return null;

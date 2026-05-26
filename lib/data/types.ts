@@ -23,6 +23,8 @@ export interface UserDoc {
   createdAt: Timestamp;
   /** Telegram chat ID, заповнюється коли користувач прив'язує Telegram. */
   telegramChatId?: string | null;
+  /** Останній heartbeat від клієнта (кожні 60с). null = ще ніколи не входив. */
+  lastSeenAt?: Timestamp;
 }
 
 export interface TelegramSettings {
@@ -30,6 +32,8 @@ export interface TelegramSettings {
   chatId: string;
   notifyNewUser: boolean;
   notifyNewOrder: boolean;
+  /** Сповіщати про зміну статусу замовлення (хто, з якого на який). */
+  notifyOrderStatus?: boolean;
 }
 
 export type TransactionType = "income" | "expense";

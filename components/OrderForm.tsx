@@ -499,14 +499,14 @@ export function OrderForm({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
+        <DialogHeader className="shrink-0">
           <DialogTitle>
             {initial ? "Редагувати замовлення" : "Нове замовлення"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="thin-scrollbar -mx-6 flex-1 space-y-4 overflow-y-auto px-6 py-2">
           <div className="space-y-1">
             <Label>Клієнт (опц.)</Label>
             <EntityCombobox
@@ -552,10 +552,11 @@ export function OrderForm({
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <Label>Позиції</Label>
-              <span className="text-xs text-muted-foreground">
-                Усього: <span className="font-semibold">{formatMoney(total)}</span>
+              <span className="inline-flex items-baseline gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-sm text-violet-700 dark:bg-violet-950/40 dark:text-violet-200">
+                <span className="text-xs opacity-80">Усього:</span>
+                <span className="text-base font-bold tabular-nums">{formatMoney(total)}</span>
               </span>
             </div>
             <div className="space-y-3">
@@ -620,8 +621,8 @@ export function OrderForm({
                     />
                     <Input
                       type="number"
-                      inputMode="decimal"
-                      step="0.01"
+                      inputMode="numeric"
+                      step="1"
                       min="0"
                       value={row.quantity}
                       onChange={(e) =>
@@ -823,7 +824,7 @@ export function OrderForm({
           <AuditInfo item={initial} />
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t pt-4">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}

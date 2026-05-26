@@ -312,6 +312,12 @@ export default function NotificationsSettingsPage() {
                 label="🛒 Нове замовлення створено"
                 onChange={(v) => handleSaveSettings({ notifyNewOrder: v })}
               />
+              <ToggleRow
+                checked={settings?.notifyOrderStatus ?? true}
+                disabled={savingSettings}
+                label="🔄 Зміна статусу замовлення"
+                onChange={(v) => handleSaveSettings({ notifyOrderStatus: v })}
+              />
             </div>
 
             <Separator />
