@@ -786,7 +786,7 @@ function OrderCard({
             )}
           </button>
 
-          <div className="flex shrink-0 flex-col items-end gap-0.5 pr-9">
+          <div className="flex shrink-0 flex-col items-end gap-0.5 pr-9 md:pr-0">
             {(deadlineDate || fallbackDate) && (
               <span
                 className={cn(
@@ -806,10 +806,21 @@ function OrderCard({
               {formatMoney(order.totalAmount)}
             </div>
           </div>
+
+          {/* Десктоп: дії одразу в картці (зміна статусу + ред./видалення) */}
+          <div className="hidden shrink-0 md:flex">
+            <StatusActions
+              variant="inline"
+              order={order}
+              onStatusChange={onStatusChange}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          </div>
         </div>
 
-        {/* ⋮ menu — floating top-right, не займає рядка з контентом */}
-        <div className="absolute right-2 top-2">
+        {/* Мобільна: компактне меню "⋮" top-right */}
+        <div className="absolute right-2 top-2 md:hidden">
           <StatusActions
             order={order}
             onStatusChange={onStatusChange}
@@ -882,13 +893,86 @@ function StatusActions({
   onStatusChange,
   onEdit,
   onDelete,
+  variant = "menu",
 }: {
   order: Order;
   onStatusChange: (s: OrderStatus) => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** "inline" — кнопки одразу в картці (десктоп); "menu" — під "⋮" (мобільна). */
+  variant?: "menu" | "inline";
 }) {
   const hasTransactions = (order.transactionIds?.length ?? 0) > 0;
+
+  const statusBtns: {
+    s: OrderStatus;
+    label: string;
+    Icon: typeof PackageOpen;
+    color: string;
+  }[] = [
+    { s: "new", label: "Нове", Icon: PackageOpen, color: "text-sky-600" },
+    {
+      s: "confirmed",
+      label: "Підтверджено",
+      Icon: CheckCircle2,
+      color: "text-violet-600",
+    },
+    {
+      s: "in_progress",
+      label: "В роботі",
+      Icon: Clock3,
+      color: "text-amber-600",
+    },
+    {
+      s: "ready",
+      label: hasTransactions ? "Готове" : "Готове → транзакція",
+      Icon: PackageCheck,
+      color: "text-emerald-600",
+    },
+  ];
+
+  if (variant === "inline") {
+    return (
+      <div className="flex items-center gap-0.5">
+        {statusBtns
+          .filter((b) => b.s !== order.status)
+          .map(({ s, label, Icon, color }) => (
+            <Button
+              key={s}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title={label}
+              aria-label={label}
+              onClick={() => onStatusChange(s)}
+            >
+              <Icon className={cn("h-4 w-4", color)} />
+            </Button>
+          ))}
+        <span className="mx-0.5 h-5 w-px bg-border" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          title="Редагувати"
+          aria-label="Редагувати"
+          onClick={onEdit}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          title="Видалити"
+          aria-label="Видалити"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <DropdownMenu>
