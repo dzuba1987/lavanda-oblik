@@ -564,7 +564,7 @@ export function OrderForm({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
+      <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
         <DialogHeader className="shrink-0">
           <DialogTitle>
             {initial ? "Редагувати замовлення" : "Нове замовлення"}
@@ -960,7 +960,7 @@ export function OrderForm({
     >
       <DialogContent
         showCloseButton
-        className="max-h-[95vh] max-w-[95vw] border-0 bg-transparent p-0 shadow-none sm:max-w-3xl"
+        className="max-h-[95dvh] max-w-[95vw] border-0 bg-transparent p-0 shadow-none sm:max-w-3xl"
       >
         <DialogTitle className="sr-only">Перегляд фото</DialogTitle>
         {lightboxSrc && (
