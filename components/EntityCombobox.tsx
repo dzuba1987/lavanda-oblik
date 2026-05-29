@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, ChevronsUpDown, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +51,7 @@ export function EntityCombobox({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  const touchRef = useRef<{ y: number; scrollTop: number } | null>(null);
 
   const selected = items.find((i) => i.id === value) ?? null;
   const trimmed = search.trim();
@@ -80,6 +81,24 @@ export function EntityCombobox({
     if (list.scrollHeight > list.clientHeight) {
       list.scrollTop += e.deltaY;
     }
+  }
+
+  // Та сама причина для тача: react-remove-scroll preventDefault'ить touchmove
+  // на порталі Popover, тож нативний свайп-скрол не працює на мобільному
+  // (бачимо лише рух підсвітки cmdk). Скролимо CommandList програмно за дельтою
+  // дотику — preventDefault не зупиняє наш JS-обробник.
+  function handleListTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    touchRef.current = {
+      y: e.touches[0].clientY,
+      scrollTop: e.currentTarget.scrollTop,
+    };
+  }
+
+  function handleListTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+    const list = e.currentTarget;
+    const start = touchRef.current;
+    if (!start || list.scrollHeight <= list.clientHeight) return;
+    list.scrollTop = start.scrollTop + (start.y - e.touches[0].clientY);
   }
 
   return (
@@ -120,6 +139,8 @@ export function EntityCombobox({
           <CommandList
             className="max-h-(--radix-popover-content-available-height)"
             onWheel={handleListWheel}
+            onTouchStart={handleListTouchStart}
+            onTouchMove={handleListTouchMove}
           >
             <CommandEmpty>
               <p className="px-3 py-2 text-sm text-muted-foreground">
