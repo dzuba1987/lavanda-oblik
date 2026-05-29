@@ -215,7 +215,7 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
                         {c.label}
                       </th>
                     ))}
-                    <th className="w-12" />
+                    <th className="w-24" />
                   </tr>
                 </thead>
                 <tbody>
@@ -238,6 +238,7 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <RowActions
+                          variant="inline"
                           onEdit={() => onEdit(item)}
                           onDelete={() => setPendingDelete(item)}
                         />
@@ -317,10 +318,39 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
 function RowActions({
   onEdit,
   onDelete,
+  variant = "menu",
 }: {
   onEdit: () => void;
   onDelete: () => void;
+  /** "inline" — кнопки одразу в рядку (десктоп); "menu" — під меню "⋮" (мобільна). */
+  variant?: "menu" | "inline";
 }) {
+  if (variant === "inline") {
+    return (
+      <div className="flex items-center justify-end gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={onEdit}
+          aria-label="Редагувати"
+          title="Редагувати"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          onClick={onDelete}
+          aria-label="Видалити"
+          title="Видалити"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

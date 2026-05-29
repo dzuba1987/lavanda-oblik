@@ -63,6 +63,12 @@ export interface Product extends AuditFields {
   costPrice?: number | null;
   /** Довільні нотатки до позиції складу. */
   notes?: string | null;
+  /**
+   * Фото товару — inline JPEG як data URL (base64), без Firebase Storage.
+   * Ресайз до 800px + JPEG q0.7 (~30-80КБ), щоб влізти в ліміт документа (1MB).
+   * null/undefined = фото немає.
+   */
+  photo?: string | null;
 }
 
 export interface Supplier extends AuditFields {

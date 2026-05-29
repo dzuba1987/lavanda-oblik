@@ -90,7 +90,8 @@ service cloud.firestore {
         // Поля складу (опційні). stock може стати від'ємним при перепродажу.
         && (!('stock' in request.resource.data) || request.resource.data.stock == null || request.resource.data.stock is number)
         && (!('costPrice' in request.resource.data) || request.resource.data.costPrice == null || isNonNegative(request.resource.data.costPrice))
-        && (!('notes' in request.resource.data) || request.resource.data.notes == null || request.resource.data.notes is string);
+        && (!('notes' in request.resource.data) || request.resource.data.notes == null || request.resource.data.notes is string)
+        && (!('photo' in request.resource.data) || request.resource.data.photo == null || request.resource.data.photo is string);
       allow delete: if isAdmin();
     }
 

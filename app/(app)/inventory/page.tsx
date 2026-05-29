@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { CrudPage, type CrudColumn } from "@/components/CrudPage";
 import {
@@ -26,6 +26,7 @@ import {
 import { productsCrud, COMMON_UNITS } from "@/lib/data/products";
 import { categoriesCrud } from "@/lib/data/categories";
 import { AuditInfo } from "@/components/AuditInfo";
+import { imageToBase64Jpeg } from "@/lib/utils/image";
 import { cn } from "@/lib/utils";
 import type { Category, Product } from "@/lib/data/types";
 
@@ -100,20 +101,35 @@ export default function InventoryPage() {
           ? catById.get(it.defaultCategoryId)
           : null;
         return (
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2 font-medium">
-              {cat && (
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: cat.color }}
-                  title={cat.name}
-                />
-              )}
-              {it.name}
-            </div>
-            <div className="text-xs text-muted-foreground md:hidden">
-              <StockText stock={it.stock} unit={it.unit} />
-              {it.costPrice != null && ` · закуп. ${formatPrice(it.costPrice)}`}
+          <div className="flex items-center gap-3">
+            {it.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={it.photo}
+                alt=""
+                className="h-10 w-10 shrink-0 rounded-md object-cover"
+              />
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                <ImagePlus className="h-4 w-4" />
+              </div>
+            )}
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-2 font-medium">
+                {cat && (
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: cat.color }}
+                    title={cat.name}
+                  />
+                )}
+                <span className="truncate">{it.name}</span>
+              </div>
+              <div className="text-xs text-muted-foreground md:hidden">
+                <StockText stock={it.stock} unit={it.unit} />
+                {it.costPrice != null &&
+                  ` · закуп. ${formatPrice(it.costPrice)}`}
+              </div>
             </div>
           </div>
         );
@@ -270,7 +286,10 @@ function InventoryFormDialog({
   const [defaultPrice, setDefaultPrice] = useState("");
   const [defaultCategoryId, setDefaultCategoryId] = useState<string>(NONE_VALUE);
   const [notes, setNotes] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -285,8 +304,24 @@ function InventoryFormDialog({
       );
       setDefaultCategoryId(initial?.defaultCategoryId ?? NONE_VALUE);
       setNotes(initial?.notes ?? "");
+      setPhoto(initial?.photo ?? null);
     }
   }, [open, initial]);
+
+  async function handlePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // дозволяємо повторно вибрати той самий файл
+    if (!file) return;
+    setPhotoLoading(true);
+    try {
+      setPhoto(await imageToBase64Jpeg(file));
+    } catch (err) {
+      console.error(err);
+      toast.error("Не вдалось обробити фото");
+    } finally {
+      setPhotoLoading(false);
+    }
+  }
 
   async function handleSave() {
     if (!name.trim()) {
@@ -329,6 +364,7 @@ function InventoryFormDialog({
         defaultCategoryId:
           defaultCategoryId === NONE_VALUE ? null : defaultCategoryId,
         notes: notes.trim() || null,
+        photo: photo ?? null,
       };
       if (initial) {
         await productsCrud.update(initial.id, payload);
@@ -366,6 +402,52 @@ function InventoryFormDialog({
               placeholder="Ефірна олія 10мл"
               autoFocus
             />
+          </div>
+
+          <div className="space-y-1">
+            <Label>Фото</Label>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoPick}
+            />
+            {photo ? (
+              <div className="relative w-fit">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo}
+                  alt="Фото товару"
+                  className="h-32 w-32 rounded-md object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPhoto(null)}
+                  className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-white shadow"
+                  aria-label="Видалити фото"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoLoading}
+                className="flex h-32 w-32 flex-col items-center justify-center gap-1 rounded-md border border-dashed text-muted-foreground transition-colors hover:bg-accent disabled:opacity-60"
+              >
+                {photoLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <ImagePlus className="h-5 w-5" />
+                    <span className="text-xs">Додати фото</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
