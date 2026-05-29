@@ -18,6 +18,7 @@ import { firebase } from "@/lib/firebase/client";
 import { notifyNewOrder, notifyOrderStatusChange } from "@/lib/notify/telegram";
 import { formatDate } from "@/lib/utils/format";
 import { currentAudit } from "./audit";
+import { adjustStock } from "./products";
 import type {
   Category,
   Delivery,
@@ -289,6 +290,23 @@ export async function completeOrder(
   });
 
   await batch.commit();
+
+  // Авто-списання зі складу — best-effort ПІСЛЯ коміту: сумуємо кількість по
+  // кожному товару (позиція може повторюватись) і зменшуємо залишок. Окремо від
+  // batch, щоб посилання на видалений товар не зривало завершення замовлення.
+  const stockByProduct = new Map<string, number>();
+  for (const item of order.items) {
+    if (!item.productId || item.quantity <= 0) continue;
+    stockByProduct.set(
+      item.productId,
+      (stockByProduct.get(item.productId) ?? 0) + item.quantity
+    );
+  }
+  for (const [productId, qty] of stockByProduct) {
+    adjustStock(productId, -qty).catch((e) =>
+      console.warn("adjustStock failed", productId, e)
+    );
+  }
 
   // Сповіщення про зміну статусу — fire-and-forget, не блокує повернення.
   if (order.status !== "ready") {

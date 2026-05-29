@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { firebase } from "@/lib/firebase/client";
 import { currentAudit } from "./audit";
+import { adjustStock } from "./products";
 import type { Transaction, TransactionType } from "./types";
 
 const COLLECTION = "transactions";
@@ -80,6 +81,15 @@ export async function createTransaction(
     createdAt: ts,
     updatedAt: ts,
   });
+
+  // Авто-списання зі складу: продаж товару (income) зменшує залишок.
+  // Помилка списання не має зривати збереження транзакції — лише логуємо.
+  if (input.type === "income" && input.productId && input.quantity > 0) {
+    adjustStock(input.productId, -input.quantity).catch((e) =>
+      console.warn("adjustStock failed", e)
+    );
+  }
+
   return ref.id;
 }
 

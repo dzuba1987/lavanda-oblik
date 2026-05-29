@@ -33,10 +33,6 @@ service cloud.firestore {
       return v == null || v is string;
     }
 
-    function isNumber(v) {
-      return v is number;
-    }
-
     function isNonNegative(v) {
       return v is number && v >= 0;
     }
@@ -90,7 +86,11 @@ service cloud.firestore {
       allow write: if isAdmin()
         && isNonEmptyString(request.resource.data.name)
         && (request.resource.data.unit == null || request.resource.data.unit is string)
-        && (request.resource.data.defaultPrice == null || isNonNegative(request.resource.data.defaultPrice));
+        && (request.resource.data.defaultPrice == null || isNonNegative(request.resource.data.defaultPrice))
+        // Поля складу (опційні). stock може стати від'ємним при перепродажу.
+        && (!('stock' in request.resource.data) || request.resource.data.stock == null || request.resource.data.stock is number)
+        && (!('costPrice' in request.resource.data) || request.resource.data.costPrice == null || isNonNegative(request.resource.data.costPrice))
+        && (!('notes' in request.resource.data) || request.resource.data.notes == null || request.resource.data.notes is string);
       allow delete: if isAdmin();
     }
 

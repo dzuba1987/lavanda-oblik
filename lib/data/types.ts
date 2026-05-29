@@ -52,6 +52,17 @@ export interface Product extends AuditFields {
   unit: string;
   defaultPrice: number | null;
   defaultCategoryId: string | null;
+  /**
+   * Поточний залишок на складі. Зменшується автоматично при продажах
+   * (income-транзакція або завершення замовлення з цим товаром).
+   * Може стати від'ємним при перепродажу — UI підсвічує це.
+   * Optional: товари, створені до фічі складу, не мають поля → трактуємо як 0.
+   */
+  stock?: number;
+  /** Ціна закупівлі (собівартість) за одиницю. null = не вказано. */
+  costPrice?: number | null;
+  /** Довільні нотатки до позиції складу. */
+  notes?: string | null;
 }
 
 export interface Supplier extends AuditFields {

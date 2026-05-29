@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Receipt,
   ClipboardList,
+  Warehouse,
   BarChart3,
   Settings,
   LogOut,
@@ -37,6 +38,7 @@ const NAV: NavItem[] = [
   { href: "/dashboard/", label: "Дашборд", icon: LayoutDashboard },
   { href: "/transactions/", label: "Транзакції", icon: Receipt },
   { href: "/orders/", label: "Замовлення", icon: ClipboardList },
+  { href: "/inventory/", label: "Мій Склад", shortLabel: "Склад", icon: Warehouse },
   { href: "/analytics/", label: "Аналітика", icon: BarChart3 },
   { href: "/settings/", label: "Налаштування", shortLabel: "Меню", icon: Settings },
 ];
