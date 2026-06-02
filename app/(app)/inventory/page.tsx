@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EntityCombobox } from "@/components/EntityCombobox";
 import { productsCrud, COMMON_UNITS } from "@/lib/data/products";
 import { categoriesCrud } from "@/lib/data/categories";
 import { AuditInfo } from "@/components/AuditInfo";
@@ -40,10 +41,28 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Row | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   const catById = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
     [categories]
+  );
+
+  // Лише категорії, що реально є в товарах — щоб не пропонувати порожні фільтри.
+  const usedCategories = useMemo(() => {
+    const ids = new Set(
+      items.map((it) => it.defaultCategoryId).filter(Boolean) as string[]
+    );
+    return categories.filter((c) => ids.has(c.id));
+  }, [items, categories]);
+
+  // Товари після фільтра за категорією (пошук далі робить сам CrudPage).
+  const visibleItems = useMemo(
+    () =>
+      categoryFilter
+        ? items.filter((it) => it.defaultCategoryId === categoryFilter)
+        : items,
+    [items, categoryFilter]
   );
 
   async function reload() {
@@ -78,18 +97,18 @@ export default function InventoryPage() {
     }
   }
 
-  // Підсумкова вартість складу за цінами закупівлі.
+  // Підсумки рахуємо з видимих товарів — щоб відповідали обраному фільтру.
   const stockValue = useMemo(
     () =>
-      items.reduce(
+      visibleItems.reduce(
         (sum, it) => sum + (it.stock ?? 0) * (it.costPrice ?? 0),
         0
       ),
-    [items]
+    [visibleItems]
   );
   const totalUnits = useMemo(
-    () => items.reduce((sum, it) => sum + (it.stock ?? 0), 0),
-    [items]
+    () => visibleItems.reduce((sum, it) => sum + (it.stock ?? 0), 0),
+    [visibleItems]
   );
 
   const columns: CrudColumn<Row>[] = [
@@ -170,10 +189,26 @@ export default function InventoryPage() {
       <CrudPage<Row>
         title="Мій Склад"
         description="Товари та їхні залишки. Продажі автоматично списують залишок."
-        items={items}
+        items={visibleItems}
         loading={loading}
         searchableText={(it) => `${it.name} ${it.unit ?? ""} ${it.notes ?? ""}`}
         columns={columns}
+        filterControl={
+          usedCategories.length > 0 ? (
+            <div className="md:w-64">
+              <EntityCombobox
+                items={usedCategories.map((c) => ({
+                  id: c.id,
+                  label: c.name,
+                  swatch: c.color,
+                }))}
+                value={categoryFilter}
+                onChange={(id) => setCategoryFilter(id)}
+                placeholder="Усі категорії"
+              />
+            </div>
+          ) : undefined
+        }
         showAuthor
         onCreate={() => {
           setEditing(null);
@@ -189,11 +224,11 @@ export default function InventoryPage() {
         emptyDescription="Додайте перший товар і вкажіть його залишок."
       />
 
-      {!loading && items.length > 0 && (
+      {!loading && visibleItems.length > 0 && (
         <div className="container mx-auto -mt-2 px-4 pb-6">
           <Card size="sm" className="py-3">
             <CardContent className="flex flex-wrap items-center justify-around gap-4 py-0 text-center">
-              <Stat label="Позицій" value={String(items.length)} />
+              <Stat label="Позицій" value={String(visibleItems.length)} />
               <Stat
                 label="Усього одиниць"
                 value={formatQty(totalUnits)}

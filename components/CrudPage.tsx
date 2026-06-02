@@ -51,6 +51,8 @@ export type CrudPageProps<T extends { id: string }> = {
   searchPlaceholder?: string;
   searchableText: (item: T) => string;
   columns: CrudColumn<T>[];
+  /** Додатковий контрол фільтрації (напр. вибір категорії) — окремий рядок під пошуком. */
+  filterControl?: React.ReactNode;
   /**
    * Якщо true і елементи задовольняють AuditFields — рендериться окрема колонка
    * "Автор" з ім'ям того, хто останнім редагував + відносна дата.
@@ -74,6 +76,7 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
     searchPlaceholder = "Пошук…",
     searchableText,
     columns,
+    filterControl,
     showAuthor = false,
     onCreate,
     onEdit,
@@ -171,6 +174,8 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
           <Plus className="mr-1 h-4 w-4" /> Додати
         </Button>
       </div>
+
+      {filterControl && <div>{filterControl}</div>}
 
       {loading ? (
         <Card>
