@@ -118,7 +118,7 @@ service cloud.firestore {
       allow create: if isAdmin()
         && request.resource.data.items is list
         && request.resource.data.items.size() > 0
-        && request.resource.data.status in ['new', 'confirmed', 'in_progress', 'ready', 'delivered', 'cancelled']
+        && request.resource.data.status in ['new', 'confirmed', 'in_progress', 'assembled', 'ready', 'delivered', 'cancelled']
         && isNonNegative(request.resource.data.totalAmount)
         && request.resource.data.photos is list
         && request.resource.data.photos.size() <= 5
@@ -128,7 +128,7 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
 
       allow update: if isAdmin()
-        && request.resource.data.status in ['new', 'confirmed', 'in_progress', 'ready', 'delivered', 'cancelled']
+        && request.resource.data.status in ['new', 'confirmed', 'in_progress', 'assembled', 'ready', 'delivered', 'cancelled']
         && isNonNegative(request.resource.data.totalAmount)
         && request.resource.data.photos is list
         && request.resource.data.photos.size() <= 5

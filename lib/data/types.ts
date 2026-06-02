@@ -126,6 +126,8 @@ export type OrderStatus =
   | "new"
   | "confirmed"
   | "in_progress"
+  /** Зібране — готове до видачі, але ще не віддане клієнту (без транзакцій). */
+  | "assembled"
   /** Terminal: при переході сюди створюються транзакції income. */
   | "ready";
 
@@ -133,6 +135,7 @@ export const ORDER_STATUSES: OrderStatus[] = [
   "new",
   "confirmed",
   "in_progress",
+  "assembled",
   "ready",
 ];
 
@@ -141,6 +144,7 @@ export const ORDER_ACTIVE_STATUSES: OrderStatus[] = [
   "new",
   "confirmed",
   "in_progress",
+  "assembled",
 ];
 
 export interface OrderItem {

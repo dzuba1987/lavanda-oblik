@@ -35,6 +35,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   new: "Нове",
   confirmed: "Підтверджено",
   in_progress: "В роботі",
+  assembled: "Зібране",
   ready: "Готове",
 };
 
@@ -42,6 +43,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   new: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200",
   confirmed: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200",
   in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
+  assembled: "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-200",
   ready: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
 };
 
