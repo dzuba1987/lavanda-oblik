@@ -6,6 +6,12 @@ const moneyFmt = new Intl.NumberFormat("uk-UA", {
   maximumFractionDigits: 2,
 });
 
+const moneyFmtNoFraction = new Intl.NumberFormat("uk-UA", {
+  style: "currency",
+  currency: "UAH",
+  maximumFractionDigits: 0,
+});
+
 const numberFmt = new Intl.NumberFormat("uk-UA", {
   maximumFractionDigits: 2,
 });
@@ -13,6 +19,12 @@ const numberFmt = new Intl.NumberFormat("uk-UA", {
 export function formatMoney(v: number | null | undefined): string {
   if (v == null || Number.isNaN(v)) return "—";
   return moneyFmt.format(v);
+}
+
+/** Сума без копійок — для вузьких місць (мобільні KPI-картки). */
+export function formatMoneyCompact(v: number | null | undefined): string {
+  if (v == null || Number.isNaN(v)) return "—";
+  return moneyFmtNoFraction.format(v);
 }
 
 export function formatNumber(v: number | null | undefined): string {

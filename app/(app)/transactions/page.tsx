@@ -41,6 +41,7 @@ import { TransactionForm } from "@/components/TransactionForm";
 import { cn } from "@/lib/utils";
 import {
   formatMoney,
+  formatMoneyCompact,
   formatDate,
   formatDateLong,
   tsToDate,
@@ -477,13 +478,22 @@ function SummaryCard({
   return (
     <Card size="sm" className="py-3">
       {/* py-0 — вертикальний відступ дає сам Card (py-3), без подвоєння */}
-      <CardContent className="px-3 py-0 md:px-4">
+      <CardContent className="px-2 py-0 md:px-4">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className={colorClass}>{icon}</span>
           {label}
         </div>
-        <div className={cn("mt-1 text-base font-semibold md:text-lg", colorClass)}>
-          {formatMoney(value)}
+        {/* uk-UA currency використовує NBSP (не переноситься), тож на вузькій
+            мобільній картці зменшуємо шрифт/трекінг, щоб сума не обрізалась. */}
+        <div
+          className={cn(
+            "mt-1 text-sm font-semibold tabular-nums md:text-lg",
+            colorClass
+          )}
+        >
+          {/* Мобільний — без копійок (вузька картка); md+ — повна сума */}
+          <span className="md:hidden">{formatMoneyCompact(value)}</span>
+          <span className="hidden md:inline">{formatMoney(value)}</span>
         </div>
       </CardContent>
     </Card>
