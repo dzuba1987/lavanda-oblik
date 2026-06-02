@@ -113,7 +113,7 @@ export default function HelpPage() {
         <ul className="my-2 ml-5 list-disc space-y-1 text-sm text-muted-foreground">
           <li>
             <strong>Активні замовлення</strong> — у статусах «Нове»,
-            «Підтверджено», «В роботі»
+            «Підтверджено», «В роботі», «Готове до видачі»
           </li>
           <li>
             <strong>Прибуток за місяць</strong> — доходи мінус витрати за

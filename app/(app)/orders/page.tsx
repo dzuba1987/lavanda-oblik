@@ -15,6 +15,7 @@ import {
   CalendarClock,
   CheckCircle2,
   PackageCheck,
+  Package,
   Clock3,
   PackageOpen,
   Truck,
@@ -92,6 +93,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   new: "Нове",
   confirmed: "Підтверджено",
   in_progress: "В роботі",
+  assembled: "Готове до видачі",
   ready: "Готове",
 };
 
@@ -99,6 +101,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   new: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200",
   confirmed: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200",
   in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
+  assembled: "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-200",
   ready: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
 };
 
@@ -106,6 +109,7 @@ const STATUS_BORDER: Record<OrderStatus, string> = {
   new: "border-l-sky-500",
   confirmed: "border-l-violet-500",
   in_progress: "border-l-amber-500",
+  assembled: "border-l-teal-500",
   ready: "border-l-emerald-500",
 };
 
@@ -113,19 +117,22 @@ const STATUS_ORDER: Record<OrderStatus, number> = {
   new: 0,
   in_progress: 1,
   confirmed: 2,
-  ready: 3,
+  assembled: 3,
+  ready: 4,
 };
 
 const ACTIVE_STATUSES: OrderStatus[] = [
   "new",
   "confirmed",
   "in_progress",
+  "assembled",
 ];
 
 const DEFAULT_ACTIVE_STATUSES: OrderStatus[] = [
   "new",
   "confirmed",
   "in_progress",
+  "assembled",
 ];
 
 export default function OrdersPage() {
@@ -268,6 +275,7 @@ export default function OrdersPage() {
       new: 0,
       confirmed: 0,
       in_progress: 0,
+      assembled: 0,
       ready: 0,
     };
     for (const o of orders) {
@@ -401,6 +409,9 @@ export default function OrdersPage() {
           </TabsTrigger>
           <TabsTrigger value="in_progress">
             {STATUS_LABEL.in_progress}<TabCount n={tabCounts.in_progress} />
+          </TabsTrigger>
+          <TabsTrigger value="assembled">
+            {STATUS_LABEL.assembled}<TabCount n={tabCounts.assembled} />
           </TabsTrigger>
           <TabsTrigger value="ready">
             {STATUS_LABEL.ready}<TabCount n={tabCounts.ready} />
@@ -937,6 +948,12 @@ function StatusActions({
       color: "text-amber-600",
     },
     {
+      s: "assembled",
+      label: "Готове до видачі",
+      Icon: Package,
+      color: "text-teal-600",
+    },
+    {
       s: "ready",
       label: hasTransactions ? "Готове" : "Готове → транзакція",
       Icon: PackageCheck,
@@ -1014,6 +1031,12 @@ function StatusActions({
           <DropdownMenuItem onClick={() => onStatusChange("in_progress")}>
             <Clock3 className="mr-2 h-4 w-4 text-amber-600" />
             В роботі
+          </DropdownMenuItem>
+        )}
+        {order.status !== "assembled" && (
+          <DropdownMenuItem onClick={() => onStatusChange("assembled")}>
+            <Package className="mr-2 h-4 w-4 text-teal-600" />
+            Готове до видачі
           </DropdownMenuItem>
         )}
         {order.status !== "ready" && (

@@ -39,3 +39,15 @@ jobs:
           projectId: lavanda-oblik
           channelId: live
           entryPoint: "."
+
+      # action-hosting-deploy publishes Hosting only — Firestore rules must be
+      # deployed separately, else new fields/statuses get rejected by stale rules.
+      - name: Deploy Firestore rules
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LAVANDA_OBLIK }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          npx --yes firebase-tools deploy --only firestore:rules \
+            --project lavanda-oblik --non-interactive
+          rm -f "$RUNNER_TEMP/firebase-sa.json"
