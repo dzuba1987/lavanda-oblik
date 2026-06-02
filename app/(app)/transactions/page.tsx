@@ -46,6 +46,7 @@ import {
   tsToDate,
 } from "@/lib/utils/format";
 import { getPeriodRange, type PeriodPreset, type PeriodRange } from "@/lib/utils/period";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useAuth } from "@/lib/auth/AuthContext";
 import {
   listTransactions,
@@ -123,9 +124,13 @@ export default function TransactionsPage() {
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const isMobile = useIsMobile();
+
+  // На мобільному фільтр періоду прихований, тож тягнемо всі транзакції
+  // (фільтрують тип і категорія). На десктопі діє обраний період.
   const range = useMemo(
-    () => getPeriodRange(periodPreset, customRange),
-    [periodPreset, customRange]
+    () => (isMobile ? { from: null, to: null } : getPeriodRange(periodPreset, customRange)),
+    [isMobile, periodPreset, customRange]
   );
 
   async function reloadDicts() {
@@ -166,7 +171,7 @@ export default function TransactionsPage() {
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeFilter, categoryFilter, periodPreset, customRange.from, customRange.to]);
+  }, [typeFilter, categoryFilter, range.from, range.to]);
 
   const filtered = useMemo(() => {
     let list = items;
@@ -263,15 +268,18 @@ export default function TransactionsPage() {
       <SummaryCards totals={totals} />
 
       <div className="flex flex-col gap-2">
-        {/* Період — окремий рядок зверху, всі пресети одразу видно */}
-        <PeriodFilter
-          preset={periodPreset}
-          custom={customRange}
-          onChange={(p, c) => {
-            setPeriodPreset(p);
-            setCustomRange(c);
-          }}
-        />
+        {/* Період — окремий рядок зверху (десктоп). На мобільному прихований:
+            фільтрують тип/категорія, а період займав місце. */}
+        <div className="hidden md:block">
+          <PeriodFilter
+            preset={periodPreset}
+            custom={customRange}
+            onChange={(p, c) => {
+              setPeriodPreset(p);
+              setCustomRange(c);
+            }}
+          />
+        </div>
 
         {productFilter && (
           <div className="flex items-center gap-2 rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-sm dark:border-violet-800 dark:bg-violet-950/40">
@@ -467,8 +475,9 @@ function SummaryCard({
     violet: "text-violet-700 dark:text-violet-300",
   }[color];
   return (
-    <Card>
-      <CardContent className="px-3 py-3 md:px-4">
+    <Card size="sm" className="py-3">
+      {/* py-0 — вертикальний відступ дає сам Card (py-3), без подвоєння */}
+      <CardContent className="px-3 py-0 md:px-4">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className={colorClass}>{icon}</span>
           {label}

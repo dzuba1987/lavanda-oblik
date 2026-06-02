@@ -191,8 +191,8 @@ export default function InventoryPage() {
 
       {!loading && items.length > 0 && (
         <div className="container mx-auto -mt-2 px-4 pb-6">
-          <Card>
-            <CardContent className="flex flex-wrap items-center justify-around gap-4 py-3 text-center">
+          <Card size="sm" className="py-3">
+            <CardContent className="flex flex-wrap items-center justify-around gap-4 py-0 text-center">
               <Stat label="Позицій" value={String(items.length)} />
               <Stat
                 label="Усього одиниць"

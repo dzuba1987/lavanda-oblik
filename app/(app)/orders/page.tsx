@@ -59,6 +59,7 @@ import { PeriodFilter } from "@/components/PeriodFilter";
 import { cn } from "@/lib/utils";
 import { formatMoney, formatDate, tsToDate } from "@/lib/utils/format";
 import { getPeriodRange, type PeriodPreset, type PeriodRange } from "@/lib/utils/period";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useAuth } from "@/lib/auth/AuthContext";
 import {
   listOrders,
@@ -170,9 +171,13 @@ export default function OrdersPage() {
     setCustomers(custs as Customer[]);
   }
 
+  const isMobile = useIsMobile();
+
+  // На мобільному фільтр періоду прихований, тож завжди тягнемо всі замовлення
+  // (фільтрують статус-вкладки). На десктопі діє обраний період.
   const range = useMemo(
-    () => getPeriodRange(periodPreset, customRange),
-    [periodPreset, customRange]
+    () => (isMobile ? { from: null, to: null } : getPeriodRange(periodPreset, customRange)),
+    [isMobile, periodPreset, customRange]
   );
 
   async function reload() {
@@ -198,7 +203,7 @@ export default function OrdersPage() {
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodPreset, customRange.from, customRange.to]);
+  }, [range.from, range.to]);
 
   const filtered = useMemo(() => {
     let list = orders;
@@ -406,14 +411,19 @@ export default function OrdersPage() {
         </TabsList>
       </Tabs>
 
-      <PeriodFilter
-        preset={periodPreset}
-        custom={customRange}
-        onChange={(p, c) => {
-          setPeriodPreset(p);
-          setCustomRange(c);
-        }}
-      />
+      {/* На мобільному фільтр періоду прихований — статус-вкладки вище вже
+          задають основне фільтрування, а період лише захаращував екран.
+          На планшеті/десктопі (md+) лишається. */}
+      <div className="hidden md:block">
+        <PeriodFilter
+          preset={periodPreset}
+          custom={customRange}
+          onChange={(p, c) => {
+            setPeriodPreset(p);
+            setCustomRange(c);
+          }}
+        />
+      </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
@@ -615,7 +625,9 @@ function KpiRow({
   loading: boolean;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    // На мобільному блок KPI прихований — статус-вкладки нижче дають ту саму
+    // інформацію (лічильники), а зведення займало пів-екрана. На md+ лишається.
+    <div className="hidden grid-cols-3 gap-2 md:grid">
       <KpiCard
         label="Активні"
         value={loading ? "…" : String(kpi.activeCount)}
@@ -655,8 +667,9 @@ function KpiCard({
     muted: "text-muted-foreground",
   }[tone];
   return (
-    <Card>
-      <CardContent className="space-y-1 px-3 py-3 md:px-4">
+    <Card size="sm" className="py-3">
+      {/* py-0 тут — вертикальний відступ дає сам Card (py-3), без подвоєння */}
+      <CardContent className="space-y-0.5 px-3 py-0 md:px-4">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className={colorClass}>{icon}</span>
           {label}

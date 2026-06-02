@@ -50,7 +50,7 @@ export function PeriodFilter({ preset, custom, onChange }: PeriodFilterProps) {
     : "Період";
 
   return (
-    <div className="flex flex-wrap items-center gap-1">
+    <div className="flex flex-wrap items-center gap-0.5 md:gap-1">
       {QUICK.map((q) => (
         <Button
           key={q.value}
@@ -58,7 +58,7 @@ export function PeriodFilter({ preset, custom, onChange }: PeriodFilterProps) {
           size="sm"
           variant={preset === q.value ? "default" : "outline"}
           className={cn(
-            "h-8 px-3 text-xs",
+            "h-9 px-1.5 text-xs md:px-3 md:text-sm",
             preset === q.value && "bg-violet-600 hover:bg-violet-700"
           )}
           onClick={() => onChange(q.value, custom)}
@@ -74,7 +74,7 @@ export function PeriodFilter({ preset, custom, onChange }: PeriodFilterProps) {
             size="sm"
             variant={preset === "custom" ? "default" : "outline"}
             className={cn(
-              "h-8 gap-1.5 px-3 text-xs",
+              "h-9 gap-1 px-1.5 text-xs md:gap-1.5 md:px-3 md:text-sm",
               preset === "custom" && "bg-violet-600 hover:bg-violet-700"
             )}
           >

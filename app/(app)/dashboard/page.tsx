@@ -109,7 +109,8 @@ export default function DashboardPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Дашборд</h1>
-          <p className="text-sm text-muted-foreground">
+          {/* Підзаголовок прихований на мобільному — економить висоту. md+ лишається. */}
+          <p className="hidden text-sm text-muted-foreground md:block">
             Огляд фінансів{userDoc?.name ? `, ${userDoc.name}` : ""}
           </p>
         </div>
@@ -263,8 +264,9 @@ function KpiCard({
   }[color];
 
   return (
-    <Card>
-      <CardContent className="space-y-1 px-3 py-3 md:px-4">
+    <Card size="sm" className="py-3">
+      {/* py-0 — вертикальний відступ дає сам Card (py-3), без подвоєння */}
+      <CardContent className="space-y-0.5 px-3 py-0 md:px-4">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className={colorClass}>{icon}</span>
           {label}

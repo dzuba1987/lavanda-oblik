@@ -913,7 +913,7 @@ export function OrderForm({
                   className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed text-muted-foreground transition-colors hover:border-violet-500 hover:text-violet-600"
                 >
                   <Camera className="h-5 w-5" />
-                  <span className="text-[11px]">Додати</span>
+                  <span className="text-xs">Додати</span>
                 </button>
               )}
             </div>
