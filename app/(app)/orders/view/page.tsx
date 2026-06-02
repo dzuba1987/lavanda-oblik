@@ -35,7 +35,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   new: "Нове",
   confirmed: "Підтверджено",
   in_progress: "В роботі",
-  assembled: "Зібране",
+  assembled: "Готове до видачі",
   ready: "Готове",
 };
 

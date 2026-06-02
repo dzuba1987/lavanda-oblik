@@ -93,7 +93,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   new: "Нове",
   confirmed: "Підтверджено",
   in_progress: "В роботі",
-  assembled: "Зібране",
+  assembled: "Готове до видачі",
   ready: "Готове",
 };
 
@@ -949,7 +949,7 @@ function StatusActions({
     },
     {
       s: "assembled",
-      label: "Зібране",
+      label: "Готове до видачі",
       Icon: Package,
       color: "text-teal-600",
     },
@@ -1036,7 +1036,7 @@ function StatusActions({
         {order.status !== "assembled" && (
           <DropdownMenuItem onClick={() => onStatusChange("assembled")}>
             <Package className="mr-2 h-4 w-4 text-teal-600" />
-            Зібране
+            Готове до видачі
           </DropdownMenuItem>
         )}
         {order.status !== "ready" && (
