@@ -42,7 +42,14 @@ jobs:
 
       # action-hosting-deploy publishes Hosting only — Firestore rules must be
       # deployed separately, else new fields/statuses get rejected by stale rules.
+      #
+      # NOTE: this needs the service account in FIREBASE_SERVICE_ACCOUNT_LAVANDA_OBLIK
+      # to hold roles/firebaserules.admin (the Hosting-only SA returns HTTP 403 on
+      # the rules :test endpoint). Until that role is granted, this step is
+      # best-effort (continue-on-error) so Hosting deploys still go green; deploy
+      # rules manually with: firebase deploy --only firestore:rules.
       - name: Deploy Firestore rules
+        continue-on-error: true
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LAVANDA_OBLIK }}
         run: |
