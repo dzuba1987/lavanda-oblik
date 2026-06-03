@@ -94,7 +94,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   confirmed: "Підтверджено",
   in_progress: "В роботі",
   assembled: "Готове до видачі",
-  ready: "Готове",
+  ready: "Виконано",
 };
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
@@ -541,7 +541,7 @@ export default function OrdersPage() {
                         ).
                       </>
                     )}{" "}
-                    Замовлення стане статусом «Готове».
+                    Замовлення стане статусом «Виконано».
                   </>
                 );
               })()}
@@ -955,7 +955,7 @@ function StatusActions({
     },
     {
       s: "ready",
-      label: hasTransactions ? "Готове" : "Готове → транзакція",
+      label: hasTransactions ? "Виконано" : "Виконано → транзакція",
       Icon: PackageCheck,
       color: "text-emerald-600",
     },
@@ -1042,7 +1042,7 @@ function StatusActions({
         {order.status !== "ready" && (
           <DropdownMenuItem onClick={() => onStatusChange("ready")}>
             <PackageCheck className="mr-2 h-4 w-4 text-emerald-600" />
-            {hasTransactions ? "Готове" : "Готове → транзакція"}
+            {hasTransactions ? "Виконано" : "Виконано → транзакція"}
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />

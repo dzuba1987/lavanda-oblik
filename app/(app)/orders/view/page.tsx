@@ -36,7 +36,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   confirmed: "Підтверджено",
   in_progress: "В роботі",
   assembled: "Готове до видачі",
-  ready: "Готове",
+  ready: "Виконано",
 };
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
