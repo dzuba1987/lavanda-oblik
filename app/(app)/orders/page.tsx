@@ -63,7 +63,7 @@ import {
 import { OrderForm } from "@/components/OrderForm";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { cn } from "@/lib/utils";
-import { formatMoney, formatDateMaybeTime, tsToDate } from "@/lib/utils/format";
+import { formatMoney, formatDate, formatDateMaybeTime, tsToDate } from "@/lib/utils/format";
 import { getPeriodRange, type PeriodPreset, type PeriodRange } from "@/lib/utils/period";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -838,11 +838,7 @@ function OrderCard({
     deadlineDate &&
     deadlineDate < new Date() &&
     ACTIVE_STATUSES.includes(order.status);
-  // Fallback-дата для відображення, коли deadline не задано:
-  // для готових — дата завершення, інакше — дата створення.
-  const fallbackDate = !deadlineDate
-    ? tsToDate(order.deliveredAt) ?? tsToDate(order.createdAt)
-    : null;
+  const createdDate = tsToDate(order.createdAt);
   const photos = order.photos ?? [];
 
   return (
@@ -944,19 +940,17 @@ function OrderCard({
           </div>
 
           <div className="flex shrink-0 flex-col items-end gap-0.5 pr-9 md:pr-0">
-            {(deadlineDate || fallbackDate) && (
+            {deadlineDate && (
               <span
                 className={cn(
                   "flex items-center gap-1 text-xs tabular-nums",
                   isOverdue
                     ? "text-red-600 dark:text-red-400"
-                    : deadlineDate
-                      ? "text-muted-foreground"
-                      : "text-muted-foreground/70"
+                    : "text-muted-foreground"
                 )}
               >
                 <CalendarClock className="h-3 w-3" />
-                {formatDateMaybeTime(deadlineDate ?? fallbackDate!)}
+                до {formatDate(deadlineDate)}
               </span>
             )}
             <div className="flex items-center gap-1.5">
@@ -1049,6 +1043,13 @@ function OrderCard({
                 />
               </button>
             ))}
+          </div>
+        )}
+
+        {createdDate && (
+          <div className="mt-2 flex items-center gap-1 border-t pt-1.5 text-[11px] text-muted-foreground/70">
+            <Clock3 className="h-3 w-3" />
+            Створено {formatDateMaybeTime(createdDate)}
           </div>
         )}
       </CardContent>
