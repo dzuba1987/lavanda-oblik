@@ -182,6 +182,61 @@ export async function sendTestTelegram(
   }
 }
 
+// ── Broadcast (новини / changelog усім підключеним) ──────────────────────
+
+export type BroadcastResult = {
+  ok: boolean;
+  /** Скільки повідомлень успішно надіслано (якщо бекенд повертає). */
+  sent?: number;
+  /** Скільки не вдалося (якщо бекенд повертає). */
+  failed?: number;
+  error?: string;
+};
+
+/**
+ * Розсилка довільного тексту (новини / «що нового») усім переданим chatId.
+ * Потребує бекенд-endpoint `POST /lavanda/telegram/broadcast`, що приймає
+ * `{ message, chat_ids: string[] }` і надсилає текст кожному chat_id.
+ *
+ * Список отримувачів формується на клієнті (адмін має доступ на читання
+ * users), тож бекенду достатньо просто релеїти текст.
+ */
+export async function broadcastNews(
+  message: string,
+  chatIds: string[]
+): Promise<BroadcastResult> {
+  if (!configured()) {
+    return { ok: false, error: "Telegram API не налаштовано" };
+  }
+  const ids = chatIds.map((c) => c.trim()).filter(Boolean);
+  if (ids.length === 0) return { ok: false, error: "Немає отримувачів" };
+  if (!message.trim()) return { ok: false, error: "Порожнє повідомлення" };
+
+  const res = await apiFetch("/lavanda/telegram/broadcast", {
+    message,
+    chat_ids: ids,
+  });
+  if (!res) return { ok: false, error: "Не вдалося звернутися до сервісу" };
+  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+  try {
+    const data = (await res.json()) as {
+      ok?: boolean;
+      sent?: number;
+      failed?: number;
+      description?: string;
+    };
+    return {
+      ok: data.ok ?? true,
+      sent: data.sent,
+      failed: data.failed,
+      error: data.ok === false ? data.description : undefined,
+    };
+  } catch {
+    // Бекенд міг відповісти без JSON — за HTTP 2xx вважаємо успіхом.
+    return { ok: true };
+  }
+}
+
 // ── Deep-link helpers ────────────────────────────────────────────────────
 
 export function botDeepLink(uid: string): string {

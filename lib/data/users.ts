@@ -28,6 +28,26 @@ export async function listUsers(): Promise<UserDoc[]> {
   }));
 }
 
+export type TelegramRecipient = {
+  uid: string;
+  name: string | null;
+  chatId: string;
+};
+
+/**
+ * Користувачі з прив'язаним Telegram — отримувачі розсилки новин.
+ */
+export async function listTelegramRecipients(): Promise<TelegramRecipient[]> {
+  const users = await listUsers();
+  return users
+    .filter((u) => !!u.telegramChatId)
+    .map((u) => ({
+      uid: u.uid,
+      name: u.name,
+      chatId: String(u.telegramChatId),
+    }));
+}
+
 export async function updateUserRole(uid: string, role: Role): Promise<void> {
   await updateDoc(doc(firebase.db, USERS, uid), { role });
 }

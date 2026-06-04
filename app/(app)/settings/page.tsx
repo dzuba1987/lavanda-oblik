@@ -11,6 +11,7 @@ import {
   FlaskConical,
   UserCog,
   BellRing,
+  Megaphone,
   HelpCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -76,6 +77,13 @@ const ADMIN_SECTION: Section = {
   icon: UserCog,
 };
 
+const CHANGELOG_SECTION: Section = {
+  href: "/settings/changelog/",
+  label: "Новини для користувачів",
+  description: "Розсилка «що нового» всім у Telegram",
+  icon: Megaphone,
+};
+
 const DEV_SECTION: Section = {
   href: "/settings/dev/",
   label: "Інструменти адміна",
@@ -89,6 +97,7 @@ export default function SettingsPage() {
 
   const sections: Section[] = [...BASE_SECTIONS];
   if (isAdmin) sections.push(ADMIN_SECTION);
+  if (isAdmin) sections.push(CHANGELOG_SECTION);
   if (isAdmin) sections.push(DEV_SECTION);
 
   return (
