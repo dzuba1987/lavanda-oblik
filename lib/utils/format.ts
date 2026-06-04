@@ -49,6 +49,14 @@ const monthFmt = new Intl.DateTimeFormat("uk-UA", {
   year: "numeric",
 });
 
+const dateTimeFmt = new Intl.DateTimeFormat("uk-UA", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 export function tsToDate(ts: Timestamp | Date | null | undefined): Date | null {
   if (!ts) return null;
   if (ts instanceof Date) return ts;
@@ -64,6 +72,25 @@ export function formatDate(ts: Timestamp | Date | null | undefined): string {
 export function formatDateLong(ts: Timestamp | Date | null | undefined): string {
   const d = tsToDate(ts);
   return d ? dateLongFmt.format(d) : "—";
+}
+
+/** Дата + час (24h), напр. «07.06.26, 14:30». */
+export function formatDateTime(ts: Timestamp | Date | null | undefined): string {
+  const d = tsToDate(ts);
+  return d ? dateTimeFmt.format(d) : "—";
+}
+
+/**
+ * Дата, а якщо час не опівночі — ще й час. Зручно для відображення, де
+ * дедлайни зберігаються як дата (00:00), а created/delivered мають реальний час.
+ */
+export function formatDateMaybeTime(
+  ts: Timestamp | Date | null | undefined
+): string {
+  const d = tsToDate(ts);
+  if (!d) return "—";
+  const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
+  return hasTime ? dateTimeFmt.format(d) : dateFmt.format(d);
 }
 
 export function formatMonth(d: Date): string {

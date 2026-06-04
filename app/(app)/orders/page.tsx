@@ -63,7 +63,7 @@ import {
 import { OrderForm } from "@/components/OrderForm";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { cn } from "@/lib/utils";
-import { formatMoney, formatDate, tsToDate } from "@/lib/utils/format";
+import { formatMoney, formatDateMaybeTime, tsToDate } from "@/lib/utils/format";
 import { getPeriodRange, type PeriodPreset, type PeriodRange } from "@/lib/utils/period";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -956,7 +956,7 @@ function OrderCard({
                 )}
               >
                 <CalendarClock className="h-3 w-3" />
-                {formatDate(deadlineDate ?? fallbackDate!)}
+                {formatDateMaybeTime(deadlineDate ?? fallbackDate!)}
               </span>
             )}
             <div className="flex items-center gap-1.5">
