@@ -25,6 +25,8 @@ import type {
   Order,
   OrderItem,
   OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
   TransactionType,
 } from "./types";
 
@@ -42,6 +44,8 @@ export type OrderInput = {
   /** Inline JPEG-фото у вигляді data URL (data:image/jpeg;base64,...). */
   photos: string[];
   delivery: Delivery | null;
+  paymentStatus: PaymentStatus;
+  paymentMethod: PaymentMethod | null;
 };
 
 export type OrderFilter = {
@@ -103,6 +107,8 @@ export async function createOrder(
     notes: input.notes,
     photos: input.photos,
     delivery: input.delivery,
+    paymentStatus: input.paymentStatus,
+    paymentMethod: input.paymentMethod,
     commentsCount: 0,
     transactionIds: [],
     createdBy,
@@ -144,6 +150,8 @@ export async function updateOrder(
     notes: input.notes,
     photos: input.photos,
     delivery: input.delivery,
+    paymentStatus: input.paymentStatus,
+    paymentMethod: input.paymentMethod,
     updatedBy: audit.uid,
     updatedByName: audit.name,
     updatedAt: serverTimestamp(),
@@ -184,6 +192,25 @@ export async function updateOrderStatus(
       toStatus: status,
     }).catch((e) => console.warn("notifyOrderStatusChange failed", e));
   }
+}
+
+/**
+ * Швидке оновлення оплати без повного збереження форми (маркування зі списку).
+ * Якщо paymentStatus !== "paid" — спосіб оплати скидається в null.
+ */
+export async function updateOrderPayment(
+  id: string,
+  paymentStatus: PaymentStatus,
+  paymentMethod: PaymentMethod | null
+): Promise<void> {
+  const audit = currentAudit();
+  await updateDoc(doc(firebase.db, COLLECTION, id), {
+    paymentStatus,
+    paymentMethod: paymentStatus === "paid" ? paymentMethod : null,
+    updatedBy: audit.uid,
+    updatedByName: audit.name,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 /**
@@ -284,6 +311,9 @@ export async function completeOrder(
     status: "ready" as OrderStatus,
     deliveredAt: txTs,
     transactionIds: newTxIds,
+    // Завершене замовлення вважається оплаченим. Спосіб лишаємо, якщо вже був.
+    paymentStatus: "paid" as PaymentStatus,
+    paymentMethod: order.paymentMethod ?? null,
     updatedBy: createdBy,
     updatedByName: createdByName,
     updatedAt: ts,

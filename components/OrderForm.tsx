@@ -27,6 +27,8 @@ import {
   type DeliveryPaidBy,
   type Order,
   type OrderItem,
+  type PaymentMethod,
+  type PaymentStatus,
   type Product,
 } from "@/lib/data/types";
 import { DELIVERY_LABELS, hasTracking, mapsDirectionsUrl } from "@/lib/utils/delivery";
@@ -117,6 +119,9 @@ export function OrderForm({
   const [deliveryPaidBy, setDeliveryPaidBy] =
     useState<DeliveryPaidBy | "">("");
 
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("unpaid");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const [localCategories, setLocalCategories] = useState<Category[]>([]);
@@ -170,6 +175,8 @@ export function OrderForm({
         initial.delivery?.cost != null ? String(initial.delivery.cost) : ""
       );
       setDeliveryPaidBy(initial.delivery?.paidBy ?? "");
+      setPaymentStatus(initial.paymentStatus ?? "unpaid");
+      setPaymentMethod(initial.paymentMethod ?? "cash");
       newOrderIdRef.current = initial.id;
     } else if (aiDraft) {
       // Префіл з AI-парсингу голосового замовлення. Беремо найкращий
@@ -203,6 +210,8 @@ export function OrderForm({
         aiDraft.delivery?.cost != null ? String(aiDraft.delivery.cost) : ""
       );
       setDeliveryPaidBy(aiDraft.delivery?.paidBy ?? "");
+      setPaymentStatus("unpaid");
+      setPaymentMethod("cash");
       newOrderIdRef.current = newOrderId();
     } else {
       setCustomerId(null);
@@ -216,6 +225,8 @@ export function OrderForm({
       setDeliveryAddress("");
       setDeliveryCost("");
       setDeliveryPaidBy("");
+      setPaymentStatus("unpaid");
+      setPaymentMethod("cash");
       newOrderIdRef.current = newOrderId();
     }
     setLocalCategories([]);
@@ -510,6 +521,8 @@ export function OrderForm({
         notes: notes.trim() || null,
         photos,
         delivery,
+        paymentStatus,
+        paymentMethod: paymentStatus === "paid" ? paymentMethod : null,
       };
 
       if (initial) {
@@ -603,7 +616,7 @@ export function OrderForm({
               )}
             </div>
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label>Клієнт (опц.)</Label>
               <EntityCombobox
@@ -637,15 +650,37 @@ export function OrderForm({
                 placeholder="+380 67 123 45 67"
               />
             </div>
+          </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="order-deadline">Доставити до (опц.)</Label>
-              <Input
-                id="order-deadline"
-                type="date"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-              />
+          <div className="space-y-1">
+            <Label>Оплата</Label>
+            <div className="flex gap-2">
+              <Select
+                value={paymentStatus}
+                onValueChange={(v) => setPaymentStatus(v as PaymentStatus)}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unpaid">Не оплачено</SelectItem>
+                  <SelectItem value="paid">Оплачено</SelectItem>
+                </SelectContent>
+              </Select>
+              {paymentStatus === "paid" && (
+                <Select
+                  value={paymentMethod}
+                  onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Готівка</SelectItem>
+                    <SelectItem value="card">Картка</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
 
@@ -755,26 +790,45 @@ export function OrderForm({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-md border bg-card p-3">
             <Label>Доставка (опц.)</Label>
-            <Select
-              value={deliveryMethod || "none"}
-              onValueChange={(v) =>
-                setDeliveryMethod(v === "none" ? "" : (v as DeliveryMethod))
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Не вказано</SelectItem>
-                {DELIVERY_METHODS.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {DELIVERY_LABELS[m]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label
+                  htmlFor="order-deadline"
+                  className="text-xs text-muted-foreground"
+                >
+                  Доставити до
+                </Label>
+                <Input
+                  id="order-deadline"
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Спосіб</Label>
+                <Select
+                  value={deliveryMethod || "none"}
+                  onValueChange={(v) =>
+                    setDeliveryMethod(v === "none" ? "" : (v as DeliveryMethod))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Не вказано</SelectItem>
+                    {DELIVERY_METHODS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {DELIVERY_LABELS[m]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             {deliveryMethod && hasTracking(deliveryMethod) && (
               <Input
                 value={deliveryTracking}

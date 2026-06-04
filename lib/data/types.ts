@@ -202,6 +202,12 @@ export interface OrderComment {
   createdAt: Timestamp;
 }
 
+/** Статус оплати замовлення. */
+export type PaymentStatus = "unpaid" | "paid";
+
+/** Спосіб оплати. Актуальний лише коли paymentStatus === "paid". */
+export type PaymentMethod = "cash" | "card";
+
 export interface Order {
   id: string;
   customerId: string | null;
@@ -230,6 +236,12 @@ export interface Order {
   photos: string[];
   /** Інформація про доставку. null = не вказано. */
   delivery: Delivery | null;
+  /**
+   * Статус оплати. Старі замовлення без цього поля трактуються як "unpaid".
+   */
+  paymentStatus: PaymentStatus;
+  /** Спосіб оплати; null поки замовлення не оплачено. */
+  paymentMethod: PaymentMethod | null;
   createdBy: string;
   createdByName?: string | null;
   updatedBy?: string;

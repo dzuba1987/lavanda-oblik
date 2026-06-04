@@ -13,8 +13,12 @@ import {
   StickyNote,
   Truck,
   User as UserIcon,
+  Banknote,
+  CreditCard,
+  CircleAlert,
 } from "lucide-react";
 import { DELIVERY_LABELS, mapsDirectionsUrl, trackingUrl } from "@/lib/utils/delivery";
+import { isOrderPaid, orderPaymentLabel } from "@/lib/utils/payment";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -194,9 +198,19 @@ function OrderDetails({ order }: { order: Order }) {
           <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Разом</span>
-            <span className="text-lg font-semibold">
-              {formatMoney(order.totalAmount)}
-            </span>
+            <div className="flex items-center gap-2">
+              <PaymentBadge order={order} />
+              <span
+                className={cn(
+                  "text-lg font-semibold tabular-nums",
+                  isOrderPaid(order)
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
+                )}
+              >
+                {formatMoney(order.totalAmount)}
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -286,6 +300,28 @@ function OrderDetails({ order }: { order: Order }) {
         <UserIcon className="h-3 w-3" /> Автор: {order.createdBy}
       </p>
     </>
+  );
+}
+
+function PaymentBadge({ order }: { order: Order }) {
+  const paid = isOrderPaid(order);
+  const Icon = paid
+    ? order.paymentMethod === "card"
+      ? CreditCard
+      : Banknote
+    : CircleAlert;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ring-1",
+        paid
+          ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/50"
+          : "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900/50"
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {orderPaymentLabel(order)}
+    </span>
   );
 }
 

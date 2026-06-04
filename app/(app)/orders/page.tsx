@@ -22,8 +22,13 @@ import {
   MessageSquare,
   Phone,
   Navigation,
+  Banknote,
+  CreditCard,
+  CircleAlert,
+  ChevronDown,
 } from "lucide-react";
 import { DELIVERY_LABELS, mapsDirectionsUrl } from "@/lib/utils/delivery";
+import { isOrderPaid, orderPaymentLabel } from "@/lib/utils/payment";
 import { VoiceOrderButton } from "@/components/VoiceOrderButton";
 import {
   Select,
@@ -66,6 +71,7 @@ import {
   listOrders,
   deleteOrder,
   updateOrderStatus,
+  updateOrderPayment,
   completeOrder,
 } from "@/lib/data/orders";
 import { categoriesCrud } from "@/lib/data/categories";
@@ -76,6 +82,8 @@ import type {
   Customer,
   Order,
   OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
   Product,
 } from "@/lib/data/types";
 
@@ -332,6 +340,21 @@ export default function OrdersPage() {
     }
   }
 
+  async function handleSetPayment(
+    o: Order,
+    status: PaymentStatus,
+    method: PaymentMethod | null
+  ) {
+    try {
+      await updateOrderPayment(o.id, status, method);
+      toast.success(status === "paid" ? "Позначено як оплачено" : "Позначено як не оплачено");
+      reload();
+    } catch (e) {
+      console.error(e);
+      toast.error("Не вдалось оновити оплату");
+    }
+  }
+
   async function handleConfirmComplete() {
     if (!pendingComplete || !authUser) return;
     setCompleting(true);
@@ -477,6 +500,7 @@ export default function OrdersPage() {
               onEdit={() => openEdit(o)}
               onDelete={() => setPendingDelete(o)}
               onStatusChange={(s) => handleStatusChange(o, s)}
+              onSetPayment={(status, method) => handleSetPayment(o, status, method)}
               onPhotoClick={setLightboxSrc}
             />
           ))}
@@ -693,17 +717,118 @@ function KpiCard({
   );
 }
 
+/**
+ * Кругла іконка способу оплати (Варіант 1). Зелена банкнота = готівка,
+ * синя картка = картка, бурштинове «!» = не оплачено.
+ */
+function PaymentIcon({ order }: { order: Order }) {
+  if (!isOrderPaid(order)) {
+    return (
+      <span
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
+        title="Не оплачено"
+        aria-label="Не оплачено"
+      >
+        <CircleAlert className="h-3 w-3" />
+      </span>
+    );
+  }
+  const isCard = order.paymentMethod === "card";
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+        isCard
+          ? "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+      )}
+      title={isCard ? "Оплачено карткою" : "Оплачено готівкою"}
+      aria-label={isCard ? "Оплачено карткою" : "Оплачено готівкою"}
+    >
+      {isCard ? (
+        <CreditCard className="h-3 w-3" />
+      ) : (
+        <Banknote className="h-3 w-3" />
+      )}
+    </span>
+  );
+}
+
+/**
+ * Клікабельний бейдж оплати — лише десктоп (Варіант 1: клік по лейблу).
+ * Випадає меню «Готівка / Картка», а для оплачених — також «Не оплачено».
+ */
+function PaymentLabelBadge({
+  order,
+  onSetPayment,
+}: {
+  order: Order;
+  onSetPayment: (status: PaymentStatus, method: PaymentMethod | null) => void;
+}) {
+  const paid = isOrderPaid(order);
+  const Icon = paid
+    ? order.paymentMethod === "card"
+      ? CreditCard
+      : Banknote
+    : CircleAlert;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            "hidden shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 transition-colors md:inline-flex",
+            paid
+              ? "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/50 dark:hover:bg-emerald-950/50"
+              : "bg-amber-50 text-amber-700 ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900/50 dark:hover:bg-amber-950/50"
+          )}
+        >
+          <Icon className="h-3 w-3" />
+          {orderPaymentLabel(order)}
+          <ChevronDown className="h-3 w-3 opacity-60" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DropdownMenuLabel className="text-xs">Оплата</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => onSetPayment("paid", "cash")}>
+          <Banknote className="mr-2 h-4 w-4 text-emerald-600" />
+          Оплачено готівкою
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSetPayment("paid", "card")}>
+          <CreditCard className="mr-2 h-4 w-4 text-sky-600" />
+          Оплачено карткою
+        </DropdownMenuItem>
+        {paid && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onSetPayment("unpaid", null)}>
+              <CircleAlert className="mr-2 h-4 w-4 text-amber-600" />
+              Зняти оплату
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function OrderCard({
   order,
   onEdit,
   onDelete,
   onStatusChange,
+  onSetPayment,
   onPhotoClick,
 }: {
   order: Order;
   onEdit: () => void;
   onDelete: () => void;
   onStatusChange: (s: OrderStatus) => void;
+  onSetPayment: (status: PaymentStatus, method: PaymentMethod | null) => void;
   onPhotoClick: (src: string) => void;
 }) {
   const firstItem = order.items[0];
@@ -724,10 +849,17 @@ function OrderCard({
     <Card className={cn("relative border-l-4", STATUS_BORDER[order.status])}>
       <CardContent className="px-4 py-2">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             onClick={onEdit}
-            className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onEdit();
+              }
+            }}
+            className="flex min-w-0 flex-1 cursor-pointer flex-col items-start gap-0.5 text-left"
           >
             <div className="flex w-full items-center gap-2">
               <Badge
@@ -736,6 +868,7 @@ function OrderCard({
               >
                 {STATUS_LABEL[order.status]}
               </Badge>
+              <PaymentLabelBadge order={order} onSetPayment={onSetPayment} />
               <span className="min-w-0 flex-1 truncate text-sm font-medium">
                 {firstItem ? firstItem.productName : "(порожнє)"}
                 {restCount > 0 && (
@@ -808,7 +941,7 @@ function OrderCard({
                 {order.notes}
               </div>
             )}
-          </button>
+          </div>
 
           <div className="flex shrink-0 flex-col items-end gap-0.5 pr-9 md:pr-0">
             {(deadlineDate || fallbackDate) && (
@@ -826,8 +959,18 @@ function OrderCard({
                 {formatDate(deadlineDate ?? fallbackDate!)}
               </span>
             )}
-            <div className="text-lg font-bold tabular-nums text-violet-700 dark:text-violet-300">
-              {formatMoney(order.totalAmount)}
+            <div className="flex items-center gap-1.5">
+              <PaymentIcon order={order} />
+              <span
+                className={cn(
+                  "text-lg font-bold tabular-nums",
+                  isOrderPaid(order)
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
+                )}
+              >
+                {formatMoney(order.totalAmount)}
+              </span>
             </div>
           </div>
 
@@ -848,6 +991,7 @@ function OrderCard({
           <StatusActions
             order={order}
             onStatusChange={onStatusChange}
+            onSetPayment={onSetPayment}
             onEdit={onEdit}
             onDelete={onDelete}
           />
@@ -915,17 +1059,20 @@ function OrderCard({
 function StatusActions({
   order,
   onStatusChange,
+  onSetPayment,
   onEdit,
   onDelete,
   variant = "menu",
 }: {
   order: Order;
   onStatusChange: (s: OrderStatus) => void;
+  onSetPayment?: (status: PaymentStatus, method: PaymentMethod | null) => void;
   onEdit: () => void;
   onDelete: () => void;
   /** "inline" — кнопки одразу в картці (десктоп); "menu" — під "⋮" (мобільна). */
   variant?: "menu" | "inline";
 }) {
+  const paid = isOrderPaid(order);
   const hasTransactions = (order.transactionIds?.length ?? 0) > 0;
 
   const statusBtns: {
@@ -1044,6 +1191,26 @@ function StatusActions({
             <PackageCheck className="mr-2 h-4 w-4 text-emerald-600" />
             {hasTransactions ? "Виконано" : "Виконано → транзакція"}
           </DropdownMenuItem>
+        )}
+        {onSetPayment && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs">Оплата</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => onSetPayment("paid", "cash")}>
+              <Banknote className="mr-2 h-4 w-4 text-emerald-600" />
+              Оплачено готівкою
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSetPayment("paid", "card")}>
+              <CreditCard className="mr-2 h-4 w-4 text-sky-600" />
+              Оплачено карткою
+            </DropdownMenuItem>
+            {paid && (
+              <DropdownMenuItem onClick={() => onSetPayment("unpaid", null)}>
+                <CircleAlert className="mr-2 h-4 w-4 text-amber-600" />
+                Зняти оплату
+              </DropdownMenuItem>
+            )}
+          </>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onEdit}>
