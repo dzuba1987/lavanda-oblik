@@ -90,6 +90,8 @@ export type NewOrderPayload = {
   itemsCount: number;
   firstItem: string | null;
   deadline: string | null;
+  paymentStatus: string;
+  paymentMethod: string | null;
 };
 
 /**
@@ -127,6 +129,8 @@ export async function notifyNewOrder(payload: NewOrderPayload): Promise<void> {
     itemsCount: payload.itemsCount,
     firstItem: payload.firstItem ?? "",
     deadline: payload.deadline ?? "",
+    paymentStatus: payload.paymentStatus,
+    paymentMethod: payload.paymentMethod ?? "",
   });
 }
 

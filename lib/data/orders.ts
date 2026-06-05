@@ -131,6 +131,8 @@ export async function createOrder(
       ? `${firstItem.productName} × ${firstItem.quantity}`
       : null,
     deadline: input.deadline ? formatDate(input.deadline) : null,
+    paymentStatus: input.paymentStatus,
+    paymentMethod: input.paymentMethod,
   }).catch((e) => console.warn("notifyNewOrder failed", e));
 }
 
