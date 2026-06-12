@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { EntityCombobox } from "@/components/EntityCombobox";
 import { bookingsCrud } from "@/lib/data/bookings";
+import { clearOrderBookingLink } from "@/lib/data/orders";
 import { customersCrud } from "@/lib/data/customers";
 import { currentAudit } from "@/lib/data/audit";
 import { notifyNewBooking } from "@/lib/notify/telegram";
@@ -773,10 +774,20 @@ function BookingFormDialog({
 
   async function handleDelete() {
     if (!editing) return;
-    if (!confirm("Видалити запис?")) return;
+    const linkedOrderId = editing.orderId ?? null;
+    const msg = linkedOrderId
+      ? "Запис створено із замовлення. Видалити його з календаря? (замовлення залишиться)"
+      : "Видалити запис?";
+    if (!confirm(msg)) return;
     setDeleting(true);
     try {
       await bookingsCrud.remove(editing.id);
+      // Розриваємо зворотній зв'язок у замовленні, щоб не лишався orphan-bookingId.
+      if (linkedOrderId) {
+        await clearOrderBookingLink(linkedOrderId).catch((e) =>
+          console.warn("clearOrderBookingLink failed", e)
+        );
+      }
       toast.success("Запис видалено");
       await onSaved();
       onOpenChange(false);

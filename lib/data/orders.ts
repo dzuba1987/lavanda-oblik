@@ -413,6 +413,36 @@ async function resolveDeliveryCategory(
   return { id: ref.id, name: "Доставка" };
 }
 
+/**
+ * Розриває зв'язок замовлення з календарним записом (коли booking видалили
+ * напряму з календаря). Скидає bookingId і photoSession, щоб дані не лишались
+ * вказувати на неіснуючий запис. Сам товар-позицію не чіпає.
+ */
+export async function clearOrderBookingLink(orderId: string): Promise<void> {
+  const audit = currentAudit();
+  await updateDoc(doc(firebase.db, COLLECTION, orderId), {
+    bookingId: null,
+    photoSession: null,
+    updatedBy: audit.uid,
+    updatedByName: audit.name,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function deleteOrder(id: string): Promise<void> {
+  // Прибираємо пов'язаний запис фотосесії в календарі, якщо є.
+  try {
+    const snap = await getDoc(doc(firebase.db, COLLECTION, id));
+    const bookingId = snap.exists()
+      ? (snap.data() as Order).bookingId
+      : null;
+    if (bookingId) {
+      await deleteDoc(doc(firebase.db, "bookings", bookingId)).catch((e) =>
+        console.warn("linked booking delete failed", e)
+      );
+    }
+  } catch (e) {
+    console.warn("deleteOrder: booking cleanup skipped", e);
+  }
   await deleteDoc(doc(firebase.db, COLLECTION, id));
 }
