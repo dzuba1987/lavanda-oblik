@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSearchParams } from "next/navigation";
 import { Timestamp } from "firebase/firestore";
 import {
-  Camera,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -219,15 +218,33 @@ function BookingsView() {
     setFormOpen(true);
   }
 
+  const activeCount = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return bookings.filter((b) => {
+      const d = tsToDate(b.start);
+      return (
+        d &&
+        d >= startOfToday &&
+        (b.status === "tentative" || b.status === "confirmed")
+      );
+    }).length;
+  }, [bookings]);
+
   return (
-    <div className="mx-auto w-full max-w-6xl p-4 md:p-6">
-      <header className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Camera className="h-6 w-6 text-violet-600" />
-          <h1 className="text-xl font-semibold tracking-tight">Фотосесії</h1>
+    <main className="container mx-auto flex flex-1 flex-col gap-4 px-4 py-6 pb-24 md:pb-6">
+      <header className="flex items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Фотосесії</h1>
+          <p className="text-sm text-muted-foreground">
+            {activeCount} {pluralizeBookings(activeCount)}
+          </p>
         </div>
-        <Button onClick={() => openNew()}>
-          <Plus className="h-4 w-4" /> Новий запис
+        <Button
+          onClick={() => openNew()}
+          className="bg-violet-600 hover:bg-violet-700"
+        >
+          <Plus className="mr-1 h-4 w-4" /> Запис
         </Button>
       </header>
 
@@ -279,8 +296,17 @@ function BookingsView() {
         bookings={bookings}
         onSaved={reload}
       />
-    </div>
+    </main>
   );
+}
+
+function pluralizeBookings(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "активний запис";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20))
+    return "активні записи";
+  return "активних записів";
 }
 
 // ── Денна навігація ────────────────────────────────────────────────────────
@@ -918,7 +944,11 @@ function BookingFormDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Скасувати
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-violet-600 hover:bg-violet-700"
+            >
               {saving ? "Збереження…" : "Зберегти"}
             </Button>
           </div>
