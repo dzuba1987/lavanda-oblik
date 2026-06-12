@@ -9,7 +9,9 @@ import {
   Clock,
   Plus,
   Trash2,
-  BadgeCheck,
+  Banknote,
+  CreditCard,
+  CircleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -48,6 +50,7 @@ import type {
   PaymentStatus,
 } from "@/lib/data/types";
 import { tsToDate, formatDateTime } from "@/lib/utils/format";
+import { PAYMENT_METHOD_LABEL } from "@/lib/utils/payment";
 
 // ── Конфіг ──────────────────────────────────────────────────────────────
 const START_HOUR = 6;
@@ -374,6 +377,38 @@ function DayNav({
   );
 }
 
+function bookingPaymentLabel(b: Booking): string {
+  if (b.paymentStatus === "paid") {
+    return b.paymentMethod
+      ? `Оплачено · ${PAYMENT_METHOD_LABEL[b.paymentMethod].toLowerCase()}`
+      : "Оплачено";
+  }
+  return "Не оплачено";
+}
+
+/** Бейдж оплати на блоці — ті ж тексти/кольори, що в замовленнях. */
+function PaymentBadge({ b }: { b: Booking }) {
+  const paid = b.paymentStatus === "paid";
+  const Icon = paid
+    ? b.paymentMethod === "card"
+      ? CreditCard
+      : Banknote
+    : CircleAlert;
+  return (
+    <span
+      className={cn(
+        "ml-auto inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-px text-[10px] font-medium ring-1",
+        paid
+          ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/50"
+          : "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900/50"
+      )}
+    >
+      <Icon className="h-2.5 w-2.5" />
+      {bookingPaymentLabel(b)}
+    </span>
+  );
+}
+
 // ── Денний таймлайн ─────────────────────────────────────────────────────────
 function Timeline({
   items,
@@ -442,12 +477,7 @@ function Timeline({
             >
               <div className="flex items-center gap-1">
                 <span className="truncate font-medium">{b.customerName}</span>
-                {b.paymentStatus === "paid" && (
-                  <BadgeCheck
-                    className="ml-auto h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-                    aria-label="Оплачено"
-                  />
-                )}
+                <PaymentBadge b={b} />
               </div>
               <div className="flex items-center gap-1 opacity-80">
                 <Clock className="h-3 w-3" />
