@@ -742,8 +742,8 @@ function PaymentIcon({ order }: { order: Order }) {
           ? "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
           : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
       )}
-      title={isCard ? "Оплачено карткою" : "Оплачено готівкою"}
-      aria-label={isCard ? "Оплачено карткою" : "Оплачено готівкою"}
+      title={isCard ? "Оплачено · картка" : "Оплачено · готівка"}
+      aria-label={isCard ? "Оплачено · картка" : "Оплачено · готівка"}
     >
       {isCard ? (
         <CreditCard className="h-3 w-3" />
@@ -796,11 +796,11 @@ function PaymentLabelBadge({
         <DropdownMenuLabel className="text-xs">Оплата</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => onSetPayment("paid", "cash")}>
           <Banknote className="mr-2 h-4 w-4 text-emerald-600" />
-          Оплачено готівкою
+          Оплачено · готівка
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onSetPayment("paid", "card")}>
           <CreditCard className="mr-2 h-4 w-4 text-sky-600" />
-          Оплачено карткою
+          Оплачено · картка
         </DropdownMenuItem>
         {paid && (
           <>
@@ -1199,11 +1199,11 @@ function StatusActions({
             <DropdownMenuLabel className="text-xs">Оплата</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => onSetPayment("paid", "cash")}>
               <Banknote className="mr-2 h-4 w-4 text-emerald-600" />
-              Оплачено готівкою
+              Оплачено · готівка
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSetPayment("paid", "card")}>
               <CreditCard className="mr-2 h-4 w-4 text-sky-600" />
-              Оплачено карткою
+              Оплачено · картка
             </DropdownMenuItem>
             {paid && (
               <DropdownMenuItem onClick={() => onSetPayment("unpaid", null)}>
