@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Timestamp } from "firebase/firestore";
 import {
   Camera,
@@ -117,6 +118,18 @@ const monthFmt = new Intl.DateTimeFormat("uk-UA", {
 
 // ─────────────────────────────────────────────────────────────────────────
 export default function BookingsPage() {
+  // useSearchParams потребує Suspense-межі.
+  return (
+    <Suspense fallback={null}>
+      <BookingsView />
+    </Suspense>
+  );
+}
+
+function BookingsView() {
+  const searchParams = useSearchParams();
+  const focusId = searchParams.get("id");
+
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,6 +138,8 @@ export default function BookingsPage() {
     d.setHours(0, 0, 0, 0);
     return d;
   });
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const focusedRef = useRef(false);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Booking | null>(null);
@@ -161,6 +176,23 @@ export default function BookingsPage() {
       alive = false;
     };
   }, []);
+
+  // Перехід за посиланням з Telegram (?id=...): відкрити день запису й підсвітити.
+  useEffect(() => {
+    if (!focusId || loading || focusedRef.current) return;
+    const b = bookings.find((x) => x.id === focusId);
+    if (!b) return;
+    const d = tsToDate(b.start);
+    if (d) {
+      const day0 = new Date(d);
+      day0.setHours(0, 0, 0, 0);
+      setDay(day0);
+    }
+    setHighlightId(focusId);
+    focusedRef.current = true;
+    const t = setTimeout(() => setHighlightId(null), 4000);
+    return () => clearTimeout(t);
+  }, [focusId, loading, bookings]);
 
   const dayItems = useMemo(() => {
     return bookings
@@ -219,6 +251,7 @@ export default function BookingsPage() {
           ) : (
             <Timeline
               items={dayItems.map((x) => x.b)}
+              highlightId={highlightId}
               onSlotClick={(h) => {
                 const at = new Date(day);
                 at.setHours(h, 0, 0, 0);
@@ -285,14 +318,21 @@ function DayNav({
 // ── Денний таймлайн ─────────────────────────────────────────────────────────
 function Timeline({
   items,
+  highlightId,
   onSlotClick,
   onBookingClick,
 }: {
   items: Booking[];
+  highlightId: string | null;
   onSlotClick: (hour: number) => void;
   onBookingClick: (b: Booking) => void;
 }) {
   const totalH = HOURS.length * PX_PER_HOUR;
+  // Скрол до підсвіченого запису, коли він з'являється у DOM.
+  const scrollToHi = useCallback((node: HTMLButtonElement | null) => {
+    if (node)
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
   return (
     <div className="relative flex overflow-hidden">
       <div className="w-14 shrink-0 border-r text-right">
@@ -327,14 +367,18 @@ function Timeline({
           const end = new Date(start.getTime() + b.durationMin * 60000);
           const meta = STATUS_META[b.status];
           const h = (b.durationMin / 60) * PX_PER_HOUR;
+          const isHi = b.id === highlightId;
           return (
             <button
               key={b.id}
+              ref={isHi ? scrollToHi : undefined}
               onClick={() => onBookingClick(b)}
               style={{ top: topPx(start), height: Math.max(h, 22) }}
               className={cn(
                 "absolute left-1 right-2 overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow hover:shadow-md",
-                meta.cls
+                meta.cls,
+                isHi &&
+                  "z-10 ring-2 ring-violet-500 ring-offset-2 ring-offset-background animate-pulse"
               )}
             >
               <div className="truncate font-medium">{b.customerName}</div>
@@ -626,10 +670,11 @@ function BookingFormDialog({
         await bookingsCrud.update(editing.id, payload);
         toast.success("Запис оновлено");
       } else {
-        await bookingsCrud.create(payload);
+        const newId = await bookingsCrud.create(payload);
         toast.success("Запис створено");
         // Fire-and-forget Telegram-нотифікація — не блокує UI.
         notifyNewBooking({
+          bookingId: newId,
           customerName: name,
           phone: payload.phone,
           createdByName: currentAudit().name,

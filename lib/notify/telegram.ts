@@ -135,6 +135,7 @@ export async function notifyNewOrder(payload: NewOrderPayload): Promise<void> {
 }
 
 export type NewBookingPayload = {
+  bookingId: string;
   customerName: string;
   phone: string | null;
   createdByName: string | null;
@@ -158,6 +159,7 @@ export async function notifyNewBooking(
   const settings = await getTelegramSettings();
   if (settings && settings.notifyNewBooking === false) return;
   await apiFetch("/lavanda/telegram/new-booking", {
+    bookingId: payload.bookingId,
     customerName: payload.customerName,
     phone: payload.phone ?? "",
     createdByName: payload.createdByName ?? "",
