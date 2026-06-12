@@ -1044,7 +1044,13 @@ function BookingFormDialog({
                 value={paymentStatus}
                 onValueChange={(v) => setPaymentStatus(v as PaymentStatus)}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={
+                    paymentStatus === "paid"
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
+                      : undefined
+                  }
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1060,7 +1066,7 @@ function BookingFormDialog({
                   value={paymentMethod}
                   onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
