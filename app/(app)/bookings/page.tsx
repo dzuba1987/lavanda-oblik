@@ -6,6 +6,7 @@ import { Timestamp } from "firebase/firestore";
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Clock,
   Plus,
   Trash2,
@@ -36,9 +37,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EntityCombobox } from "@/components/EntityCombobox";
 import { bookingsCrud } from "@/lib/data/bookings";
-import { clearOrderBookingLink } from "@/lib/data/orders";
+import { clearOrderBookingLink, updateOrderPayment } from "@/lib/data/orders";
 import { customersCrud } from "@/lib/data/customers";
 import { currentAudit } from "@/lib/data/audit";
 import { notifyNewBooking } from "@/lib/notify/telegram";
@@ -236,6 +245,32 @@ function BookingsView() {
       .sort((a, b) => a.start!.getTime() - b.start!.getTime());
   }, [bookings, day]);
 
+  // Швидка зміна оплати з таймлайну. Якщо запис пов'язаний із замовленням —
+  // синхронізуємо оплату й там, щоб не розходились.
+  async function setBookingPayment(
+    b: Booking,
+    status: PaymentStatus,
+    method: PaymentMethod | null
+  ) {
+    const pm = status === "paid" ? method : null;
+    try {
+      await bookingsCrud.update(b.id, {
+        paymentStatus: status,
+        paymentMethod: pm,
+      });
+      if (b.orderId) {
+        await updateOrderPayment(b.orderId, status, pm).catch((e) =>
+          console.warn("order payment sync failed", e)
+        );
+      }
+      toast.success("Оплату оновлено");
+      await reload();
+    } catch (e) {
+      console.error(e);
+      toast.error("Не вдалося оновити оплату");
+    }
+  }
+
   function openNew(at?: Date) {
     setEditing(null);
     setPresetStart(at ?? null);
@@ -311,6 +346,7 @@ function BookingsView() {
                 openNew(at);
               }}
               onBookingClick={openEdit}
+              onSetPayment={setBookingPayment}
             />
           )}
         </Card>
@@ -386,8 +422,21 @@ function bookingPaymentLabel(b: Booking): string {
   return "Не оплачено";
 }
 
-/** Бейдж оплати на блоці — ті ж тексти/кольори, що в замовленнях. */
-function PaymentBadge({ b }: { b: Booking }) {
+/**
+ * Клікабельний бейдж оплати на блоці — ті ж тексти/кольори/меню, що в
+ * замовленнях. Дозволяє швидко змінити оплату прямо з таймлайну.
+ */
+function PaymentBadge({
+  b,
+  onSetPayment,
+}: {
+  b: Booking;
+  onSetPayment: (
+    b: Booking,
+    status: PaymentStatus,
+    method: PaymentMethod | null
+  ) => void;
+}) {
   const paid = b.paymentStatus === "paid";
   const Icon = paid
     ? b.paymentMethod === "card"
@@ -395,17 +444,44 @@ function PaymentBadge({ b }: { b: Booking }) {
       : Banknote
     : CircleAlert;
   return (
-    <span
-      className={cn(
-        "ml-auto inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-px text-[10px] font-medium ring-1",
-        paid
-          ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/50"
-          : "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900/50"
-      )}
-    >
-      <Icon className="h-2.5 w-2.5" />
-      {bookingPaymentLabel(b)}
-    </span>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            "ml-auto inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-px text-[10px] font-medium ring-1 transition-colors",
+            paid
+              ? "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/50"
+              : "bg-amber-50 text-amber-700 ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900/50"
+          )}
+        >
+          <Icon className="h-2.5 w-2.5" />
+          {bookingPaymentLabel(b)}
+          <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuLabel className="text-xs">Оплата</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => onSetPayment(b, "paid", "cash")}>
+          <Banknote className="mr-2 h-4 w-4 text-emerald-600" />
+          Оплачено · готівка
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSetPayment(b, "paid", "card")}>
+          <CreditCard className="mr-2 h-4 w-4 text-sky-600" />
+          Оплачено · картка
+        </DropdownMenuItem>
+        {paid && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onSetPayment(b, "unpaid", null)}>
+              <CircleAlert className="mr-2 h-4 w-4 text-amber-600" />
+              Зняти оплату
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -415,15 +491,21 @@ function Timeline({
   highlightId,
   onSlotClick,
   onBookingClick,
+  onSetPayment,
 }: {
   items: Booking[];
   highlightId: string | null;
   onSlotClick: (hour: number) => void;
   onBookingClick: (b: Booking) => void;
+  onSetPayment: (
+    b: Booking,
+    status: PaymentStatus,
+    method: PaymentMethod | null
+  ) => void;
 }) {
   const totalH = HOURS.length * PX_PER_HOUR;
   // Скрол до підсвіченого запису, коли він з'являється у DOM.
-  const scrollToHi = useCallback((node: HTMLButtonElement | null) => {
+  const scrollToHi = useCallback((node: HTMLElement | null) => {
     if (node)
       node.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
@@ -463,13 +545,21 @@ function Timeline({
           const h = (b.durationMin / 60) * PX_PER_HOUR;
           const isHi = b.id === highlightId;
           return (
-            <button
+            <div
               key={b.id}
               ref={isHi ? scrollToHi : undefined}
+              role="button"
+              tabIndex={0}
               onClick={() => onBookingClick(b)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onBookingClick(b);
+                }
+              }}
               style={{ top: topPx(start), height: Math.max(h, 22) }}
               className={cn(
-                "absolute left-1 right-2 overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow hover:shadow-md",
+                "absolute left-1 right-2 cursor-pointer overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow hover:shadow-md",
                 meta.cls,
                 isHi &&
                   "z-10 ring-2 ring-violet-500 ring-offset-2 ring-offset-background animate-pulse"
@@ -477,14 +567,14 @@ function Timeline({
             >
               <div className="flex items-center gap-1">
                 <span className="truncate font-medium">{b.customerName}</span>
-                <PaymentBadge b={b} />
+                <PaymentBadge b={b} onSetPayment={onSetPayment} />
               </div>
               <div className="flex items-center gap-1 opacity-80">
                 <Clock className="h-3 w-3" />
                 {hhmm(start)}–{hhmm(end)}
                 {b.type ? ` · ${b.type}` : ""}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
