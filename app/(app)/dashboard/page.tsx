@@ -6,6 +6,9 @@ import {
   ArrowUpFromLine,
   TrendingUp,
   Percent,
+  Camera,
+  Clock,
+  CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,18 +19,24 @@ import { IncomeExpenseChart } from "@/components/charts/IncomeExpenseChart";
 import { CategoryPieChart } from "@/components/charts/CategoryPieChart";
 import { TopProductsChart } from "@/components/charts/TopProductsChart";
 import { cn } from "@/lib/utils";
-import { formatMoney, formatNumber } from "@/lib/utils/format";
+import {
+  formatMoney,
+  formatNumber,
+  tsToDate,
+  formatDateTime,
+} from "@/lib/utils/format";
 import { getPeriodRange, type PeriodPreset, type PeriodRange } from "@/lib/utils/period";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { listTransactions } from "@/lib/data/transactions";
 import { categoriesCrud } from "@/lib/data/categories";
+import { bookingsCrud } from "@/lib/data/bookings";
 import {
   computeTotals,
   monthlyTrend,
   categoryBreakdown,
   topProducts,
 } from "@/lib/analytics";
-import type { Category, Transaction } from "@/lib/data/types";
+import type { Booking, Category, Transaction } from "@/lib/data/types";
 
 export default function DashboardPage() {
   const { userDoc } = useAuth();
@@ -45,6 +54,7 @@ export default function DashboardPage() {
   const [periodTx, setPeriodTx] = useState<Transaction[]>([]);
   const [trendTx, setTrendTx] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
   const categoryColorById = useMemo(() => {
@@ -63,18 +73,20 @@ export default function DashboardPage() {
         trendFrom.setDate(1);
         trendFrom.setHours(0, 0, 0, 0);
 
-        const [period, trend, cats] = await Promise.all([
+        const [period, trend, cats, books] = await Promise.all([
           listTransactions({
             from: range.from ?? undefined,
             to: range.to ?? undefined,
           }),
           listTransactions({ from: trendFrom }),
           categoriesCrud.list(),
+          bookingsCrud.list(),
         ]);
         if (cancelled) return;
         setPeriodTx(period);
         setTrendTx(trend);
         setCategories(cats as Category[]);
+        setBookings(books as Booking[]);
       } catch (e) {
         if (!cancelled) {
           console.error(e);
@@ -103,6 +115,33 @@ export default function DashboardPage() {
 
   const margin =
     totals.income > 0 ? (totals.net / totals.income) * 100 : null;
+
+  // Зарезервовані години фотосесій за обраний період (не скасовані).
+  const sessionStats = useMemo(() => {
+    const from = range.from ? range.from.getTime() : -Infinity;
+    const to = range.to ? range.to.getTime() : Infinity;
+    let minutes = 0;
+    let count = 0;
+    for (const b of bookings) {
+      if (b.status === "cancelled") continue;
+      const d = tsToDate(b.start);
+      if (!d) continue;
+      const t = d.getTime();
+      if (t < from || t > to) continue;
+      minutes += b.durationMin || 0;
+      count++;
+    }
+    // Найближчий майбутній (не скасований) запис — поза періодом теж.
+    const now = Date.now();
+    let next: { date: Date; booking: Booking } | null = null;
+    for (const b of bookings) {
+      if (b.status === "cancelled") continue;
+      const d = tsToDate(b.start);
+      if (!d || d.getTime() < now) continue;
+      if (!next || d.getTime() < next.date.getTime()) next = { date: d, booking: b };
+    }
+    return { hours: minutes / 60, count, next };
+  }, [bookings, range.from, range.to]);
 
   return (
     <main className="container mx-auto flex flex-1 flex-col gap-6 px-4 py-6">
@@ -163,6 +202,53 @@ export default function DashboardPage() {
           icon={<Percent className="h-4 w-4" />}
           loading={loading}
         />
+      </section>
+
+      <section>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Camera className="h-4 w-4 text-violet-600" />
+              Фотосесії
+            </CardTitle>
+            <Badge variant="secondary" className="font-normal">
+              за період
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                <SessionStat
+                  icon={<Clock className="h-4 w-4" />}
+                  label="Зарезервовано"
+                  value={`${formatNumber(sessionStats.hours)} год`}
+                />
+                <SessionStat
+                  icon={<Camera className="h-4 w-4" />}
+                  label="Сеансів"
+                  value={`${sessionStats.count} ${pluralize(
+                    sessionStats.count,
+                    "запис",
+                    "записи",
+                    "записів"
+                  )}`}
+                />
+                <SessionStat
+                  icon={<CalendarClock className="h-4 w-4" />}
+                  label="Найближчий"
+                  value={
+                    sessionStats.next
+                      ? formatDateTime(sessionStats.next.date)
+                      : "—"
+                  }
+                  hint={sessionStats.next?.booking.customerName}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       <section>
@@ -283,6 +369,31 @@ function KpiCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function SessionStat({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint?: string | null;
+}) {
+  return (
+    <div className="space-y-0.5">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="text-violet-600 dark:text-violet-300">{icon}</span>
+        {label}
+      </div>
+      <div className="truncate text-base font-semibold md:text-lg">{value}</div>
+      {hint && (
+        <div className="truncate text-xs text-muted-foreground">{hint}</div>
+      )}
+    </div>
   );
 }
 
