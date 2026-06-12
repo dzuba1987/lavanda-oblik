@@ -10,6 +10,7 @@ import {
   Clock,
   Plus,
   Trash2,
+  BadgeCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -39,7 +40,13 @@ import { bookingsCrud } from "@/lib/data/bookings";
 import { customersCrud } from "@/lib/data/customers";
 import { currentAudit } from "@/lib/data/audit";
 import { notifyNewBooking } from "@/lib/notify/telegram";
-import type { Booking, BookingStatus, Customer } from "@/lib/data/types";
+import type {
+  Booking,
+  BookingStatus,
+  Customer,
+  PaymentMethod,
+  PaymentStatus,
+} from "@/lib/data/types";
 import { tsToDate, formatDateTime } from "@/lib/utils/format";
 
 // ── Конфіг ──────────────────────────────────────────────────────────────
@@ -381,7 +388,15 @@ function Timeline({
                   "z-10 ring-2 ring-violet-500 ring-offset-2 ring-offset-background animate-pulse"
               )}
             >
-              <div className="truncate font-medium">{b.customerName}</div>
+              <div className="flex items-center gap-1">
+                <span className="truncate font-medium">{b.customerName}</span>
+                {b.paymentStatus === "paid" && (
+                  <BadgeCheck
+                    className="ml-auto h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    aria-label="Оплачено"
+                  />
+                )}
+              </div>
               <div className="flex items-center gap-1 opacity-80">
                 <Clock className="h-3 w-3" />
                 {hhmm(start)}–{hhmm(end)}
@@ -547,6 +562,8 @@ function BookingFormDialog({
   const [status, setStatus] = useState<BookingStatus>("tentative");
   const [type, setType] = useState("");
   const [price, setPrice] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("unpaid");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -570,6 +587,8 @@ function BookingFormDialog({
       setStatus(editing.status);
       setType(editing.type ?? "");
       setPrice(editing.price != null ? String(editing.price) : "");
+      setPaymentStatus(editing.paymentStatus ?? "unpaid");
+      setPaymentMethod(editing.paymentMethod ?? "cash");
       setNotes(editing.notes ?? "");
     } else {
       setCustomerId(null);
@@ -580,6 +599,8 @@ function BookingFormDialog({
       setStatus("tentative");
       setType("");
       setPrice("");
+      setPaymentStatus("unpaid");
+      setPaymentMethod("cash");
       setNotes("");
     }
     setLocalCustomers([]);
@@ -661,6 +682,8 @@ function BookingFormDialog({
       status,
       type: type.trim() || null,
       price: priceNum,
+      paymentStatus,
+      paymentMethod: paymentStatus === "paid" ? paymentMethod : null,
       notes: notes.trim() || null,
     };
 
@@ -683,6 +706,8 @@ function BookingFormDialog({
           type: payload.type,
           price: priceNum,
           status,
+          paymentStatus: payload.paymentStatus,
+          paymentMethod: payload.paymentMethod,
         }).catch((e) => console.warn("notifyNewBooking failed", e));
       }
       await onSaved();
@@ -828,6 +853,41 @@ function BookingFormDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Оплата</Label>
+              <Select
+                value={paymentStatus}
+                onValueChange={(v) => setPaymentStatus(v as PaymentStatus)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unpaid">Не оплачено</SelectItem>
+                  <SelectItem value="paid">Оплачено</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {paymentStatus === "paid" && (
+              <div className="space-y-1">
+                <Label>Спосіб</Label>
+                <Select
+                  value={paymentMethod}
+                  onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Готівка</SelectItem>
+                    <SelectItem value="card">Картка</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">

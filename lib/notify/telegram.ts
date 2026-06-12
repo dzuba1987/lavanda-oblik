@@ -145,6 +145,8 @@ export type NewBookingPayload = {
   type: string | null;
   price: number | null;
   status: string;
+  paymentStatus: string;
+  paymentMethod: string | null;
 };
 
 /**
@@ -168,6 +170,8 @@ export async function notifyNewBooking(
     type: payload.type ?? "",
     price: payload.price ?? 0,
     status: payload.status,
+    paymentStatus: payload.paymentStatus,
+    paymentMethod: payload.paymentMethod ?? "",
   });
 }
 

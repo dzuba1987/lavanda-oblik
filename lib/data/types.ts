@@ -118,6 +118,10 @@ export interface Booking extends AuditFields {
   /** Тип зйомки (Портрет, Сімейна…) — вільний текст. */
   type: string | null;
   price: number | null;
+  /** Статус оплати. Optional: записи до фічі трактуємо як "unpaid". */
+  paymentStatus?: PaymentStatus;
+  /** Спосіб оплати — актуальний лише коли paymentStatus === "paid". */
+  paymentMethod?: PaymentMethod | null;
   notes: string | null;
 }
 
