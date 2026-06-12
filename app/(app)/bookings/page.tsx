@@ -146,6 +146,26 @@ function BookingsView() {
   });
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const focusedRef = useRef(false);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Підсвітити запис на 4с (із самоочисткою попереднього таймера).
+  const flashHighlight = useCallback((id: string | null) => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    setHighlightId(id);
+    if (id)
+      highlightTimerRef.current = setTimeout(() => setHighlightId(null), 4000);
+  }, []);
+
+  // Вибір дня в календарі: відкрити день і одразу сфокусувати перший
+  // (найраніший) не скасований запис, якщо такий є.
+  function selectDay(d: Date) {
+    setDay(d);
+    const first = bookings
+      .map((b) => ({ b, s: tsToDate(b.start) }))
+      .filter((x) => x.s && sameDay(x.s, d) && x.b.status !== "cancelled")
+      .sort((a, b) => a.s!.getTime() - b.s!.getTime())[0];
+    flashHighlight(first?.b.id ?? null);
+  }
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Booking | null>(null);
@@ -194,11 +214,16 @@ function BookingsView() {
       day0.setHours(0, 0, 0, 0);
       setDay(day0);
     }
-    setHighlightId(focusId);
     focusedRef.current = true;
-    const t = setTimeout(() => setHighlightId(null), 4000);
-    return () => clearTimeout(t);
-  }, [focusId, loading, bookings]);
+    flashHighlight(focusId);
+  }, [focusId, loading, bookings, flashHighlight]);
+
+  // Чистка таймера при анмаунті.
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
+  }, []);
 
   const dayItems = useMemo(() => {
     return bookings
@@ -250,7 +275,7 @@ function BookingsView() {
 
       <div className="grid gap-4 md:grid-cols-[280px_1fr]">
         <Card className="p-3">
-          <MiniMonth selected={day} onSelect={setDay} bookings={bookings} />
+          <MiniMonth selected={day} onSelect={selectDay} bookings={bookings} />
           <div className="mt-3 space-y-1.5 border-t pt-3">
             <p className="text-xs font-medium text-muted-foreground">Легенда</p>
             {(Object.keys(STATUS_META) as BookingStatus[]).map((s) => (
