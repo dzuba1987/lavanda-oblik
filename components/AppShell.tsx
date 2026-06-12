@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   HelpCircle,
+  Camera,
   User as UserIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ const NAV: NavItem[] = [
   { href: "/dashboard/", label: "Дашборд", icon: LayoutDashboard },
   { href: "/transactions/", label: "Транзакції", icon: Receipt },
   { href: "/orders/", label: "Замовлення", shortLabel: "Замовл.", icon: ClipboardList },
+  { href: "/bookings/", label: "Фотосесії", shortLabel: "Фото", icon: Camera },
   { href: "/inventory/", label: "Мій Склад", shortLabel: "Склад", icon: Warehouse },
   { href: "/analytics/", label: "Аналітика", icon: BarChart3 },
   { href: "/settings/", label: "Налаштування", shortLabel: "Меню", icon: Settings },

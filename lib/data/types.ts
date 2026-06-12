@@ -34,6 +34,8 @@ export interface TelegramSettings {
   notifyNewOrder: boolean;
   /** Сповіщати про зміну статусу замовлення (хто, з якого на який). */
   notifyOrderStatus?: boolean;
+  /** Сповіщати про новий запис на фотосесію. Undefined трактуємо як увімкнено. */
+  notifyNewBooking?: boolean;
 }
 
 export type TransactionType = "income" | "expense";
@@ -93,6 +95,29 @@ export interface Customer extends AuditFields {
    * Optional: старі клієнти створені до фічі не мають цього поля.
    */
   address?: string | null;
+  notes: string | null;
+}
+
+export type BookingStatus = "tentative" | "confirmed" | "done" | "cancelled";
+
+/**
+ * Запис на фотосесію. Зберігається в колекції "bookings".
+ * `start` — момент початку (дата+час), `durationMin` — тривалість у хвилинах;
+ * кінець обчислюється на льоту. customerId опційний (новий клієнт може бути
+ * вписаний вручну без картки в "customers"); customerName денормалізований
+ * для відображення без додаткового читання.
+ */
+export interface Booking extends AuditFields {
+  id: string;
+  customerId: string | null;
+  customerName: string;
+  phone: string | null;
+  start: Timestamp;
+  durationMin: number;
+  status: BookingStatus;
+  /** Тип зйомки (Портрет, Сімейна…) — вільний текст. */
+  type: string | null;
+  price: number | null;
   notes: string | null;
 }
 

@@ -134,6 +134,41 @@ export async function notifyNewOrder(payload: NewOrderPayload): Promise<void> {
   });
 }
 
+export type NewBookingPayload = {
+  customerName: string;
+  phone: string | null;
+  createdByName: string | null;
+  /** Уже відформатований момент початку, напр. «12.06.26, 14:00». */
+  whenText: string;
+  durationMin: number;
+  type: string | null;
+  price: number | null;
+  status: string;
+};
+
+/**
+ * Alert linked admins about a freshly created photo-session booking. Server
+ * (notifyNewBooking) фанаутить усім admin'ам із telegramChatId. Клієнт
+ * перевіряє settings.notifyNewBooking, щоб не дзвонити бекенду коли вимкнено.
+ */
+export async function notifyNewBooking(
+  payload: NewBookingPayload
+): Promise<void> {
+  if (!configured()) return;
+  const settings = await getTelegramSettings();
+  if (settings && settings.notifyNewBooking === false) return;
+  await apiFetch("/lavanda/telegram/new-booking", {
+    customerName: payload.customerName,
+    phone: payload.phone ?? "",
+    createdByName: payload.createdByName ?? "",
+    whenText: payload.whenText,
+    durationMin: payload.durationMin,
+    type: payload.type ?? "",
+    price: payload.price ?? 0,
+    status: payload.status,
+  });
+}
+
 export type OrderStatusChangePayload = {
   orderId: string;
   customerName: string | null;

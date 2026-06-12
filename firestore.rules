@@ -111,6 +111,34 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ===== bookings (записи на фотосесії) =====
+    match /bookings/{id} {
+      allow read: if isAdmin();
+
+      allow create: if isAdmin()
+        && isNonEmptyString(request.resource.data.customerName)
+        && request.resource.data.start is timestamp
+        && isNonNegative(request.resource.data.durationMin)
+        && request.resource.data.status in ['tentative', 'confirmed', 'done', 'cancelled']
+        && isOptionalString(request.resource.data.phone)
+        && isOptionalString(request.resource.data.type)
+        && (request.resource.data.price == null || isNonNegative(request.resource.data.price))
+        && (request.resource.data.customerId == null || request.resource.data.customerId is string)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isAdmin()
+        && isNonEmptyString(request.resource.data.customerName)
+        && request.resource.data.start is timestamp
+        && isNonNegative(request.resource.data.durationMin)
+        && request.resource.data.status in ['tentative', 'confirmed', 'done', 'cancelled']
+        && (request.resource.data.price == null || isNonNegative(request.resource.data.price))
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy;
+
+      allow delete: if isAdmin();
+    }
+
     // ===== orders =====
     match /orders/{id} {
       allow read: if isAdmin();
