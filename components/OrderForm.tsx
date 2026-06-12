@@ -17,10 +17,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { EntityCombobox, type ComboItem } from "@/components/EntityCombobox";
+import { Timestamp } from "firebase/firestore";
 import { formatMoney, toInputDate, fromInputDate, tsToDate } from "@/lib/utils/format";
 import {
   ORDER_PHOTOS_MAX,
   DELIVERY_METHODS,
+  type BookingStatus,
   type Category,
   type Customer,
   type DeliveryMethod,
@@ -49,7 +51,30 @@ import { imageToBase64Jpeg } from "@/lib/utils/image";
 import { categoriesCrud } from "@/lib/data/categories";
 import { productsCrud } from "@/lib/data/products";
 import { customersCrud } from "@/lib/data/customers";
+import { bookingsCrud } from "@/lib/data/bookings";
 import { useAuth } from "@/lib/auth/AuthContext";
+
+/** Тривалості фотосесії — дзеркалить форму календаря. */
+const SESSION_DURATIONS = [30, 45, 60, 90, 120, 150, 180, 240];
+
+function fmtSessionDuration(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return [h > 0 ? `${h} год` : "", m > 0 ? `${m} хв` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** Чи назва товару — фотосесія (за нею вмикаємо поля дати/часу замість доставки). */
+function isPhotoSessionName(name: string | null | undefined): boolean {
+  return /фотосес/i.test(name ?? "");
+}
+
+function toInputTime(d: Date | null): string {
+  if (!d) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 /**
  * saved   — фото з документа (готовий data URL)
@@ -122,6 +147,12 @@ export function OrderForm({
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("unpaid");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
 
+  // Поля фотосесії (заміняють блок доставки, коли в позиціях є «Фотосесія»).
+  const [sessionDate, setSessionDate] = useState("");
+  const [sessionTime, setSessionTime] = useState("");
+  const [sessionDuration, setSessionDuration] = useState(60);
+  const [sessionType, setSessionType] = useState("");
+
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const [localCategories, setLocalCategories] = useState<Category[]>([]);
@@ -143,6 +174,18 @@ export function OrderForm({
 
   // Категорії для замовлення — тільки income (бо замовлення → дохід)
   const incomeCategories = allCategories.filter((c) => c.type === "income");
+
+  // Чи є серед позицій фотосесія → показуємо поля дати/часу замість доставки.
+  const isPhotoSession = useMemo(
+    () =>
+      items.some((row) => {
+        const name = row.productId
+          ? allProducts.find((p) => p.id === row.productId)?.name
+          : row.productName;
+        return isPhotoSessionName(name);
+      }),
+    [items, allProducts]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -177,6 +220,12 @@ export function OrderForm({
       setDeliveryPaidBy(initial.delivery?.paidBy ?? "");
       setPaymentStatus(initial.paymentStatus ?? "unpaid");
       setPaymentMethod(initial.paymentMethod ?? "cash");
+      const ps = initial.photoSession;
+      const psStart = ps ? tsToDate(ps.start) : null;
+      setSessionDate(psStart ? toInputDate(psStart) : "");
+      setSessionTime(toInputTime(psStart));
+      setSessionDuration(ps?.durationMin ?? 60);
+      setSessionType(ps?.type ?? "");
       newOrderIdRef.current = initial.id;
     } else if (aiDraft) {
       // Префіл з AI-парсингу голосового замовлення. Беремо найкращий
@@ -212,6 +261,10 @@ export function OrderForm({
       setDeliveryPaidBy(aiDraft.delivery?.paidBy ?? "");
       setPaymentStatus("unpaid");
       setPaymentMethod("cash");
+      setSessionDate("");
+      setSessionTime("");
+      setSessionDuration(60);
+      setSessionType("");
       newOrderIdRef.current = newOrderId();
     } else {
       setCustomerId(null);
@@ -227,6 +280,10 @@ export function OrderForm({
       setDeliveryPaidBy("");
       setPaymentStatus("unpaid");
       setPaymentMethod("cash");
+      setSessionDate("");
+      setSessionTime("");
+      setSessionDuration(60);
+      setSessionType("");
       newOrderIdRef.current = newOrderId();
     }
     setLocalCategories([]);
@@ -492,7 +549,9 @@ export function OrderForm({
         return;
       }
 
-      const delivery = deliveryMethod
+      // Фотосесія заміняє доставку — обнуляємо delivery, навіть якщо в стейті
+      // лишилось значення з попереднього вибору.
+      const delivery = !isPhotoSession && deliveryMethod
         ? {
             method: deliveryMethod,
             trackingNumber: hasTracking(deliveryMethod)
@@ -507,22 +566,88 @@ export function OrderForm({
           }
         : null;
 
+      const totalAmount = validatedItems.reduce(
+        (acc, it) => acc + it.totalAmount,
+        0
+      );
+      const orderStatus = initial?.status ?? "new";
+
+      // ── Фотосесія: дата+час обов'язкові, синхронізуємо запис у календарі ──
+      let sessionStart: Date | null = null;
+      let linkedBookingId: string | null = initial?.bookingId ?? null;
+      if (isPhotoSession) {
+        if (!sessionDate || !sessionTime) {
+          toast.error("Вкажіть дату й час фотосесії");
+          setSaving(false);
+          return;
+        }
+        sessionStart = new Date(`${sessionDate}T${sessionTime}`);
+        if (Number.isNaN(sessionStart.getTime())) {
+          toast.error("Невірні дата/час фотосесії");
+          setSaving(false);
+          return;
+        }
+        // ready — термінальний статус замовлення → фотосесія «завершена».
+        const bStatus: BookingStatus =
+          orderStatus === "ready" ? "done" : "confirmed";
+        const bookingPayload = {
+          customerId,
+          customerName: customer?.name?.trim() || "Фотосесія",
+          phone: phone.trim() || null,
+          start: Timestamp.fromDate(sessionStart),
+          durationMin: sessionDuration,
+          status: bStatus,
+          type: sessionType.trim() || null,
+          price: totalAmount,
+          paymentStatus,
+          paymentMethod: paymentStatus === "paid" ? paymentMethod : null,
+          notes: notes.trim() || null,
+          orderId,
+        };
+        try {
+          if (linkedBookingId) {
+            await bookingsCrud.update(linkedBookingId, bookingPayload);
+          } else {
+            linkedBookingId = await bookingsCrud.create(bookingPayload);
+          }
+        } catch (e) {
+          console.error("booking sync failed", e);
+          toast.error("Не вдалось синхронізувати запис у календарі");
+          setSaving(false);
+          return;
+        }
+      } else if (linkedBookingId) {
+        // Фотосесію прибрали з позицій → видаляємо пов'язаний запис.
+        try {
+          await bookingsCrud.remove(linkedBookingId);
+        } catch (e) {
+          console.warn("booking cleanup failed", e);
+        }
+        linkedBookingId = null;
+      }
+
       const input: OrderInput = {
         customerId,
         customerName: customer?.name ?? null,
         phone: phone.trim() || null,
         items: validatedItems,
-        totalAmount: validatedItems.reduce(
-          (acc, it) => acc + it.totalAmount,
-          0
-        ),
+        totalAmount,
         deadline: dl,
-        status: initial?.status ?? "new",
+        status: orderStatus,
         notes: notes.trim() || null,
         photos,
         delivery,
         paymentStatus,
         paymentMethod: paymentStatus === "paid" ? paymentMethod : null,
+        photoSession:
+          isPhotoSession && sessionStart
+            ? {
+                start: sessionStart,
+                durationMin: sessionDuration,
+                type: sessionType.trim() || null,
+              }
+            : null,
+        bookingId: linkedBookingId,
       };
 
       if (initial) {
@@ -790,6 +915,7 @@ export function OrderForm({
             </div>
           </div>
 
+          {!isPhotoSession && (
           <div className="space-y-2 rounded-md border bg-card p-3">
             <Label>Доставка (опц.)</Label>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -903,7 +1029,85 @@ export function OrderForm({
               </>
             )}
           </div>
+          )}
 
+          {isPhotoSession && (
+            <div className="space-y-2 rounded-md border bg-card p-3">
+              <Label>Фотосесія</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="session-date"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Дата
+                  </Label>
+                  <Input
+                    id="session-date"
+                    type="date"
+                    value={sessionDate}
+                    onChange={(e) => setSessionDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="session-time"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Час
+                  </Label>
+                  <Input
+                    id="session-time"
+                    type="time"
+                    step={300}
+                    value={sessionTime}
+                    onChange={(e) => setSessionTime(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    Тривалість
+                  </Label>
+                  <Select
+                    value={String(sessionDuration)}
+                    onValueChange={(v) => setSessionDuration(Number(v))}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SESSION_DURATIONS.map((m) => (
+                        <SelectItem key={m} value={String(m)}>
+                          {fmtSessionDuration(m)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="session-type"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Тип зйомки
+                  </Label>
+                  <Input
+                    id="session-type"
+                    value={sessionType}
+                    onChange={(e) => setSessionType(e.target.value)}
+                    placeholder="Портрет, Сімейна…"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Запис автоматично з'явиться в календарі «Фотосесії».
+              </p>
+            </div>
+          )}
+
+          {!isPhotoSession && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Фото (опц.)</Label>
@@ -972,6 +1176,7 @@ export function OrderForm({
               )}
             </div>
           </div>
+          )}
 
           <div className="space-y-1">
             <Label htmlFor="order-notes">Нотатки (опц.)</Label>

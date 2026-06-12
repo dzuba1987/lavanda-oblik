@@ -98,6 +98,13 @@ export interface Customer extends AuditFields {
   notes: string | null;
 }
 
+/** Деталі фотосесії всередині замовлення (дзеркалить поля booking). */
+export interface PhotoSessionInfo {
+  start: Timestamp;
+  durationMin: number;
+  type: string | null;
+}
+
 export type BookingStatus = "tentative" | "confirmed" | "done" | "cancelled";
 
 /**
@@ -122,6 +129,8 @@ export interface Booking extends AuditFields {
   paymentStatus?: PaymentStatus;
   /** Спосіб оплати — актуальний лише коли paymentStatus === "paid". */
   paymentMethod?: PaymentMethod | null;
+  /** ID пов'язаного замовлення, якщо запис створено із замовлення-фотосесії. */
+  orderId?: string | null;
   notes: string | null;
 }
 
@@ -271,6 +280,13 @@ export interface Order {
   paymentStatus: PaymentStatus;
   /** Спосіб оплати; null поки замовлення не оплачено. */
   paymentMethod: PaymentMethod | null;
+  /**
+   * Деталі фотосесії — заповнюється, коли в позиціях є товар «Фотосесія».
+   * Заміняє блок доставки: дата+час, тривалість і тип зйомки. null = не фотосесія.
+   */
+  photoSession?: PhotoSessionInfo | null;
+  /** ID пов'язаного запису в календарі «Фотосесії» (синхронізація). */
+  bookingId?: string | null;
   createdBy: string;
   createdByName?: string | null;
   updatedBy?: string;

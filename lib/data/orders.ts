@@ -46,6 +46,10 @@ export type OrderInput = {
   delivery: Delivery | null;
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod | null;
+  /** Деталі фотосесії (start як Date) — null якщо замовлення не фотосесія. */
+  photoSession: { start: Date; durationMin: number; type: string | null } | null;
+  /** ID пов'язаного запису календаря (синхронізація booking). */
+  bookingId: string | null;
 };
 
 export type OrderFilter = {
@@ -109,6 +113,14 @@ export async function createOrder(
     delivery: input.delivery,
     paymentStatus: input.paymentStatus,
     paymentMethod: input.paymentMethod,
+    photoSession: input.photoSession
+      ? {
+          start: Timestamp.fromDate(input.photoSession.start),
+          durationMin: input.photoSession.durationMin,
+          type: input.photoSession.type,
+        }
+      : null,
+    bookingId: input.bookingId,
     commentsCount: 0,
     transactionIds: [],
     createdBy,
@@ -154,6 +166,14 @@ export async function updateOrder(
     delivery: input.delivery,
     paymentStatus: input.paymentStatus,
     paymentMethod: input.paymentMethod,
+    photoSession: input.photoSession
+      ? {
+          start: Timestamp.fromDate(input.photoSession.start),
+          durationMin: input.photoSession.durationMin,
+          type: input.photoSession.type,
+        }
+      : null,
+    bookingId: input.bookingId,
     updatedBy: audit.uid,
     updatedByName: audit.name,
     updatedAt: serverTimestamp(),

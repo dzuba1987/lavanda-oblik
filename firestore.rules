@@ -137,6 +137,7 @@ service cloud.firestore {
         && (request.resource.data.price == null || isNonNegative(request.resource.data.price))
         && (!('paymentStatus' in request.resource.data) || request.resource.data.paymentStatus in ['unpaid', 'paid'])
         && (!('paymentMethod' in request.resource.data) || request.resource.data.paymentMethod == null || request.resource.data.paymentMethod in ['cash', 'card'])
+        && (!('orderId' in request.resource.data) || request.resource.data.orderId == null || request.resource.data.orderId is string)
         && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.createdBy == resource.data.createdBy;
 
