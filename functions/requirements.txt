@@ -1,0 +1,5 @@
+# Python deps for import_excel.py
+# Install: pip install -r requirements.txt  (run.sh does this in a venv)
+odfpy>=1.4.1
+google-cloud-firestore>=2.11.0
+google-auth>=2.20.0

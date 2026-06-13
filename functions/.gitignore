@@ -8,3 +8,8 @@ typings/
 # Node.js dependency directory
 node_modules/
 *.local
+
+# Python venv / cache (import_excel.py via run.sh)
+.venv/
+__pycache__/
+*.pyc
