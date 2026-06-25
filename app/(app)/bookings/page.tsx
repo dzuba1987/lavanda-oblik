@@ -163,6 +163,25 @@ function effectiveStatus(b: Booking): BookingStatus {
   return end < Date.now() ? "done" : b.status;
 }
 
+/** Поточний час, оновлюється щохвилини (для лінії «зараз» на таймлайні). */
+function useNow(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
+/** Чи сеанс триває прямо зараз (початок ≤ now < кінець, не скасований). */
+function isOngoing(b: Booking, now: Date): boolean {
+  if (b.status === "cancelled") return false;
+  const s = tsToDate(b.start);
+  if (!s) return false;
+  const end = s.getTime() + b.durationMin * 60000;
+  return s.getTime() <= now.getTime() && now.getTime() < end;
+}
+
 /** Date → "YYYY-MM-DDTHH:mm" для <input type="datetime-local"> (локальний час). */
 function toLocalInput(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -429,6 +448,7 @@ function BookingsView() {
                   highlightId={highlightId}
                   weather={weather}
                   showWeather={showWeather}
+                  day={day}
                   onSlotClick={(h) => {
                     const at = new Date(day);
                     at.setHours(h, 0, 0, 0);
@@ -693,6 +713,11 @@ function MobileTimeline({
   const byHour = new Map((weather?.hourly ?? []).map((h) => [h.hour, h]));
   const total = HOURS.length * PXM;
   const topPxM = (h: number) => (h - START_HOUR) * PXM;
+  const now = useNow();
+  const showNow =
+    sameDay(now, day) &&
+    hourOf(now) >= START_HOUR &&
+    hourOf(now) <= END_HOUR + 1;
 
   const withStart = items
     .map((b) => ({ b, start: tsToDate(b.start) }))
@@ -844,6 +869,7 @@ function MobileTimeline({
             const end = new Date(start.getTime() + b.durationMin * 60000);
             const meta = STATUS_META[effectiveStatus(b)];
             const h = (b.durationMin / 60) * PXM;
+            const ongoing = isOngoing(b, now) && sameDay(now, day);
             return (
               <div
                 key={b.id}
@@ -863,11 +889,13 @@ function MobileTimeline({
                 }}
                 className={cn(
                   "absolute right-1 z-10 cursor-pointer overflow-hidden rounded-md border px-2 py-1 text-xs shadow-sm",
-                  meta.cls
+                  meta.cls,
+                  ongoing && "z-20 ring-2 ring-rose-500"
                 )}
               >
                 <div className="flex items-center gap-1">
                   <span className="truncate font-medium">{b.customerName}</span>
+                  {ongoing && <OngoingBadge />}
                   <PaymentBadge b={b} onSetPayment={onSetPayment} />
                 </div>
                 <div className="flex items-center gap-1 opacity-80">
@@ -881,6 +909,8 @@ function MobileTimeline({
               </div>
             );
           })}
+
+          {showNow && <NowLine top={topPxM(hourOf(now))} now={now} />}
         </div>
       </div>
     </div>
@@ -1148,6 +1178,7 @@ function Timeline({
   highlightId,
   weather,
   showWeather,
+  day,
   onSlotClick,
   onBookingClick,
   onSetPayment,
@@ -1156,6 +1187,7 @@ function Timeline({
   highlightId: string | null;
   weather: DayWeather | null;
   showWeather: boolean;
+  day: Date;
   onSlotClick: (hour: number) => void;
   onBookingClick: (b: Booking) => void;
   onSetPayment: (
@@ -1165,6 +1197,11 @@ function Timeline({
   ) => void;
 }) {
   const isMobile = useIsMobile();
+  const now = useNow();
+  const showNow =
+    sameDay(now, day) &&
+    hourOf(now) >= START_HOUR &&
+    hourOf(now) <= END_HOUR + 1;
   const totalH = HOURS.length * PX_PER_HOUR;
   const phases = phasesFromWeather(weather);
   // На мобільному підпис фази = лише іконка (текст ховаємо), записи майже на всю
@@ -1247,6 +1284,7 @@ function Timeline({
           const meta = STATUS_META[effectiveStatus(b)];
           const h = (b.durationMin / 60) * PX_PER_HOUR;
           const isHi = b.id === highlightId;
+          const ongoing = isOngoing(b, now) && sameDay(now, day);
           return (
             <div
               key={b.id}
@@ -1264,12 +1302,14 @@ function Timeline({
               className={cn(
                 "absolute right-2 cursor-pointer overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow hover:shadow-md",
                 meta.cls,
+                ongoing && "z-20 ring-2 ring-rose-500",
                 isHi &&
                   "z-10 ring-2 ring-violet-500 ring-offset-2 ring-offset-background animate-pulse"
               )}
             >
               <div className="flex items-center gap-1">
                 <span className="truncate font-medium">{b.customerName}</span>
+                {ongoing && <OngoingBadge />}
                 <PaymentBadge b={b} onSetPayment={onSetPayment} />
               </div>
               <div className="flex items-center gap-1 opacity-80">
@@ -1283,6 +1323,35 @@ function Timeline({
             </div>
           );
         })}
+
+        {showNow && <NowLine top={topPx(now)} now={now} />}
+      </div>
+    </div>
+  );
+}
+
+/** Бейдж «йде зараз» — пульсуюча крапка + текст. */
+function OngoingBadge() {
+  return (
+    <span className="flex shrink-0 items-center gap-1 rounded bg-rose-500 px-1 py-0.5 text-[10px] font-medium leading-none text-white">
+      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+      йде
+    </span>
+  );
+}
+
+/** Червона лінія поточного часу + мітка години. */
+function NowLine({ top, now }: { top: number; now: Date }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 z-30"
+      style={{ top }}
+    >
+      <div className="relative h-0.5 bg-rose-500">
+        <span className="absolute -left-1 -top-[3px] h-2 w-2 rounded-full bg-rose-500" />
+        <span className="absolute left-1 -top-2.5 rounded bg-rose-500 px-1 text-[10px] font-medium leading-tight text-white tabular-nums">
+          {hhmm(now)}
+        </span>
       </div>
     </div>
   );
