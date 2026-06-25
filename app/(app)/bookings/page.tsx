@@ -13,6 +13,17 @@ import {
   Banknote,
   CreditCard,
   CircleAlert,
+  Sunrise,
+  Sunset,
+  Sun,
+  Moon,
+  Video,
+  Camera,
+  Star,
+  CalendarDays,
+  ListChecks,
+  HelpCircle,
+  Cloud,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -45,6 +56,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { EntityCombobox } from "@/components/EntityCombobox";
 import { bookingsCrud } from "@/lib/data/bookings";
 import { clearOrderBookingLink, updateOrderPayment } from "@/lib/data/orders";
@@ -60,15 +76,32 @@ import type {
 } from "@/lib/data/types";
 import { tsToDate, formatDateTime } from "@/lib/utils/format";
 import { PAYMENT_METHOD_LABEL } from "@/lib/utils/payment";
+import { useIsMobile } from "@/hooks/use-is-mobile";
+import {
+  useDayWeather,
+  weatherMeta,
+  phasesFromWeather,
+  useMonthWeather,
+  monthDayEmoji,
+  LIGHTING_META,
+  DEFAULT_LOCATION,
+  type DayWeather,
+  type HourWeather,
+  type LightingKey,
+  type LightingPhase,
+} from "@/lib/utils/weather";
 
 // ── Конфіг ──────────────────────────────────────────────────────────────
-const START_HOUR = 6;
-const END_HOUR = 23;
+// Старт о 05:00 — щоб вмістити ранкову blue/golden годину влітку.
+const START_HOUR = 5;
+const END_HOUR = 22;
 const HOURS = Array.from(
   { length: END_HOUR - START_HOUR + 1 },
   (_, i) => START_HOUR + i
 );
 const PX_PER_HOUR = 56;
+// Ліва смуга під підписи фаз освітлення — записи зсунуті праворуч, щоб не перекривати.
+const LABEL_LANE = 200;
 
 const STATUS_META: Record<
   BookingStatus,
@@ -110,6 +143,18 @@ const sameDay = (a: Date, b: Date) =>
 function topPx(d: Date) {
   const mins = (d.getHours() - START_HOUR) * 60 + d.getMinutes();
   return (mins / 60) * PX_PER_HOUR;
+}
+
+/**
+ * Статус для відображення: якщо сеанс уже завершився за часом (кінець у минулому),
+ * показуємо «Завершено», окрім скасованих. БД не змінюємо — лише вигляд.
+ */
+function effectiveStatus(b: Booking): BookingStatus {
+  if (b.status === "cancelled" || b.status === "done") return b.status;
+  const d = tsToDate(b.start);
+  if (!d) return b.status;
+  const end = d.getTime() + b.durationMin * 60000;
+  return end < Date.now() ? "done" : b.status;
 }
 
 /** Date → "YYYY-MM-DDTHH:mm" для <input type="datetime-local"> (локальний час). */
@@ -183,6 +228,9 @@ function BookingsView() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Booking | null>(null);
   const [presetStart, setPresetStart] = useState<Date | null>(null);
+  const [view, setView] = useState<CalView>("calendar");
+  const [slotCat, setSlotCat] = useState<SlotCat>("photo");
+  const [showWeather, setShowWeather] = useState(true);
 
   async function reload() {
     const [bs, cs] = await Promise.all([
@@ -282,6 +330,9 @@ function BookingsView() {
     setFormOpen(true);
   }
 
+  const { weather, loading: weatherLoading } = useDayWeather(day);
+  const isMobile = useIsMobile();
+
   const activeCount = useMemo(() => {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -315,38 +366,79 @@ function BookingsView() {
       <div className="grid gap-4 md:grid-cols-[280px_1fr]">
         <Card className="p-3">
           <MiniMonth selected={day} onSelect={selectDay} bookings={bookings} />
-          <div className="mt-3 space-y-1.5 border-t pt-3">
-            <p className="text-xs font-medium text-muted-foreground">Легенда</p>
-            {(Object.keys(STATUS_META) as BookingStatus[]).map((s) => (
-              <div key={s} className="flex items-center gap-2 text-xs">
-                <span
-                  className={cn("h-2.5 w-2.5 rounded-full", STATUS_META[s].dot)}
-                />
-                {STATUS_META[s].label}
-              </div>
-            ))}
+          {/* Легенди — лише на десктопі (на мобільному економимо місце). */}
+          <div className="hidden md:block">
+            <div className="mt-3 space-y-1.5 border-t pt-3">
+              <p className="text-xs font-medium text-muted-foreground">
+                Статус записів
+              </p>
+              {(Object.keys(STATUS_META) as BookingStatus[]).map((s) => (
+                <div key={s} className="flex items-center gap-2 text-xs">
+                  <span
+                    className={cn("h-2.5 w-2.5 rounded-full", STATUS_META[s].dot)}
+                  />
+                  {STATUS_META[s].label}
+                </div>
+              ))}
+            </div>
+            <LightingLegend />
           </div>
+          <WeatherCard weather={weather} loading={weatherLoading} />
         </Card>
 
         <Card className="p-0">
-          <DayNav day={day} onChange={setDay} count={dayItems.length} />
+          <DayNav
+            day={day}
+            onChange={setDay}
+            count={dayItems.length}
+            view={view}
+            onViewChange={setView}
+            recommendedCount={recommendedSlots(weather).length}
+            weatherOn={showWeather}
+            onWeatherToggle={() => setShowWeather((v) => !v)}
+            weatherToggle
+          />
           {loading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
+          ) : view === "calendar" ? (
+            isMobile ? (
+              <MobileTimeline
+                items={dayItems.map((x) => x.b)}
+                weather={weather}
+                day={day}
+                showWeather={showWeather}
+                onNew={openNew}
+                onEdit={openEdit}
+                onSetPayment={setBookingPayment}
+              />
+            ) : (
+              <>
+                <BestHours weather={weather} />
+                <Timeline
+                  items={dayItems.map((x) => x.b)}
+                  highlightId={highlightId}
+                  weather={weather}
+                  showWeather={showWeather}
+                  onSlotClick={(h) => {
+                    const at = new Date(day);
+                    at.setHours(h, 0, 0, 0);
+                    openNew(at);
+                  }}
+                  onBookingClick={openEdit}
+                  onSetPayment={setBookingPayment}
+                />
+              </>
+            )
           ) : (
-            <Timeline
-              items={dayItems.map((x) => x.b)}
-              highlightId={highlightId}
-              onSlotClick={(h) => {
-                const at = new Date(day);
-                at.setHours(h, 0, 0, 0);
-                openNew(at);
-              }}
-              onBookingClick={openEdit}
-              onSetPayment={setBookingPayment}
+            <SlotsView
+              weather={weather}
+              cat={slotCat}
+              onCatChange={setSlotCat}
+              onBook={openNew}
             />
           )}
         </Card>
@@ -375,14 +467,28 @@ function pluralizeBookings(n: number): string {
 }
 
 // ── Денна навігація ────────────────────────────────────────────────────────
+type CalView = "calendar" | "slots";
+
 function DayNav({
   day,
   onChange,
   count,
+  view,
+  onViewChange,
+  recommendedCount,
+  weatherOn,
+  onWeatherToggle,
+  weatherToggle,
 }: {
   day: Date;
   onChange: (d: Date) => void;
   count: number;
+  view: CalView;
+  onViewChange: (v: CalView) => void;
+  recommendedCount: number;
+  weatherOn: boolean;
+  onWeatherToggle: () => void;
+  weatherToggle: boolean;
 }) {
   const shift = (n: number) => {
     const d = new Date(day);
@@ -395,7 +501,7 @@ function DayNav({
     onChange(d);
   };
   return (
-    <div className="flex items-center justify-between border-b px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" onClick={() => shift(-1)}>
           <ChevronLeft className="h-4 w-4" />
@@ -408,7 +514,67 @@ function DayNav({
         </Button>
         <span className="ml-1 font-medium capitalize">{dayFmt.format(day)}</span>
       </div>
-      <Badge variant="secondary">{count} записів</Badge>
+      <div className="flex items-center gap-2">
+        {view === "calendar" && weatherToggle && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onWeatherToggle}
+            aria-pressed={weatherOn}
+            aria-label="Погодинна погода"
+            title="Погодинна погода"
+            className={cn(
+              weatherOn && "border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300"
+            )}
+          >
+            <Cloud className="h-4 w-4" />
+          </Button>
+        )}
+        <ViewToggle view={view} onChange={onViewChange} />
+        {view === "slots" ? (
+          <Badge className="gap-1 bg-violet-100 text-violet-700 hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-300">
+            <Star className="h-3 w-3 fill-current" />
+            рекомендовані слоти {recommendedCount}
+          </Badge>
+        ) : (
+          <Badge variant="secondary">{count} записів</Badge>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Перемикач Календар / Слоти.
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: CalView;
+  onChange: (v: CalView) => void;
+}) {
+  const opts: { key: CalView; label: string; Icon: typeof CalendarDays }[] = [
+    { key: "calendar", label: "Календар", Icon: CalendarDays },
+    { key: "slots", label: "Слоти", Icon: ListChecks },
+  ];
+  return (
+    <div className="inline-flex rounded-md border p-0.5">
+      {opts.map(({ key, label, Icon }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onChange(key)}
+          aria-pressed={view === key}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors",
+            view === key
+              ? "bg-violet-600 text-white"
+              : "text-muted-foreground hover:bg-accent"
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">{label}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -485,16 +651,505 @@ function PaymentBadge({
   );
 }
 
+// ── Мобільний таймлайн (колонка погоди + смуги фаз + картки-записи) ─────────
+function hourOf(d: Date) {
+  return d.getHours() + d.getMinutes() / 60;
+}
+
+const PXM = 60;
+const M_GUTTER = 44;
+const M_WCOL = 58;
+// Ліва смуга під підпис фази — картки записів зсунуті праворуч, щоб не перекривати.
+const M_LANE = 108;
+
+function MobileTimeline({
+  items,
+  weather,
+  day,
+  showWeather,
+  onNew,
+  onEdit,
+  onSetPayment,
+}: {
+  items: Booking[];
+  weather: DayWeather | null;
+  day: Date;
+  showWeather: boolean;
+  onNew: (at: Date) => void;
+  onEdit: (b: Booking) => void;
+  onSetPayment: (
+    b: Booking,
+    status: PaymentStatus,
+    method: PaymentMethod | null
+  ) => void;
+}) {
+  const phases = phasesFromWeather(weather);
+  const byHour = new Map((weather?.hourly ?? []).map((h) => [h.hour, h]));
+  const total = HOURS.length * PXM;
+  const topPxM = (h: number) => (h - START_HOUR) * PXM;
+
+  const withStart = items
+    .map((b) => ({ b, start: tsToDate(b.start) }))
+    .filter((x): x is { b: Booking; start: Date } => x.start != null);
+
+  const best = phases
+    ? BEST_CARDS.map((c) => {
+        const p = phases.find((x) => x.key === c.key);
+        return p ? { ...c, p } : null;
+      }).filter(Boolean)
+    : [];
+
+  return (
+    <div>
+      {/* Найкращі години — горизонтальний скрол */}
+      {best.length > 0 && (
+        <div className="border-b px-4 pb-3 pt-3">
+          <p className="mb-2 text-sm font-medium">Найкращі години сьогодні</p>
+          <div className="grid grid-cols-2 gap-2">
+            {best.map((c) => {
+              const m = LIGHTING_META[c!.key];
+              const Icon = c!.Icon;
+              return (
+                <div
+                  key={c!.key}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border px-3 py-2",
+                    m.band
+                  )}
+                >
+                  <Icon className={cn("h-5 w-5 shrink-0", m.text)} />
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold tabular-nums">
+                      {hhmm(c!.p.from)}–{hhmm(c!.p.to)}
+                    </div>
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      {c!.title}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Таймлайн */}
+      <div className="relative flex">
+        {/* Години */}
+        <div className="shrink-0 border-r" style={{ width: M_GUTTER }}>
+          {HOURS.map((h) => (
+            <div
+              key={h}
+              style={{ height: PXM }}
+              className="relative pr-1 text-right text-[10px] tabular-nums text-muted-foreground"
+            >
+              <span className="absolute -top-1.5 right-1">
+                {String(h).padStart(2, "0")}:00
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Колонка погоди */}
+        {showWeather && (
+          <div className="shrink-0 border-r" style={{ width: M_WCOL }}>
+            {HOURS.map((h) => {
+              const hw = byHour.get(h);
+              if (!hw) return <div key={h} style={{ height: PXM }} />;
+              const rain = hw.precipProb != null && hw.precipProb >= 40;
+              return (
+                <div
+                  key={h}
+                  style={{ height: PXM }}
+                  className="flex items-center justify-center gap-1 leading-tight"
+                >
+                  <span className="text-base">{weatherMeta(hw.code).emoji}</span>
+                  <div className="text-[10px]">
+                    {hw.temp != null && (
+                      <div className="font-medium tabular-nums">
+                        {Math.round(hw.temp)}°
+                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "tabular-nums",
+                        rain ? "text-blue-500" : "text-muted-foreground"
+                      )}
+                    >
+                      {rain ? `💧${hw.precipProb}%` : `☁${hw.cloud ?? "—"}%`}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Смуги фаз + записи */}
+        <div className="relative flex-1" style={{ height: total }}>
+          {/* Фази: підпис у лівій смузі (M_LANE), завжди кольорові. */}
+          {phases?.map((p) => {
+            const top = clampPx(topPxM(hourOf(p.from)), total);
+            const bottom = clampPx(topPxM(hourOf(p.to)), total);
+            if (bottom <= top) return null;
+            const m = LIGHTING_META[p.key];
+            const Icon = PHASE_ICON[p.key];
+            return (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => {
+                  const at = new Date(day);
+                  const f = hourOf(p.from);
+                  at.setHours(Math.floor(f), Math.round((f % 1) * 60), 0, 0);
+                  onNew(at);
+                }}
+                style={{ top, height: bottom - top }}
+                className={cn(
+                  "absolute inset-x-0 overflow-hidden text-left",
+                  m.band
+                )}
+              >
+                <span className={cn("absolute inset-y-0 left-0 w-1", m.swatch)} />
+                <div
+                  className="flex items-start gap-2 py-2 pl-3 pr-1"
+                  style={{ width: M_LANE }}
+                >
+                  <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", m.text)} />
+                  <span className="text-xs font-medium leading-tight">
+                    {m.label}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+
+          {/* лінії годин */}
+          {HOURS.map((h, i) => (
+            <div
+              key={h}
+              style={{ top: i * PXM }}
+              className="pointer-events-none absolute inset-x-0 border-b border-dashed border-border/40"
+            />
+          ))}
+
+          {/* записи — кольорові за статусом, зсунуті праворуч від підписів фаз */}
+          {withStart.map(({ b, start }) => {
+            const end = new Date(start.getTime() + b.durationMin * 60000);
+            const meta = STATUS_META[effectiveStatus(b)];
+            const h = (b.durationMin / 60) * PXM;
+            return (
+              <div
+                key={b.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => onEdit(b)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onEdit(b);
+                  }
+                }}
+                style={{
+                  top: topPxM(hourOf(start)),
+                  height: Math.max(h, 30),
+                  left: M_LANE,
+                }}
+                className={cn(
+                  "absolute right-1 z-10 cursor-pointer overflow-hidden rounded-md border px-2 py-1 text-xs shadow-sm",
+                  meta.cls
+                )}
+              >
+                <div className="flex items-center gap-1">
+                  <span className="truncate font-medium">{b.customerName}</span>
+                  <PaymentBadge b={b} onSetPayment={onSetPayment} />
+                </div>
+                <div className="flex items-center gap-1 opacity-80">
+                  <Clock className="h-3 w-3" />
+                  {hhmm(start)}–{hhmm(end)}
+                  {b.type ? ` · ${b.type}` : ""}
+                </div>
+                {b.notes && (
+                  <div className="truncate opacity-70">{b.notes}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Рекомендовані слоти (вид «Слоти») ───────────────────────────────────────
+type SlotCat = "photo" | "video" | "east" | "west";
+
+const CAT_TABS: { key: SlotCat; label: string; Icon: typeof Sun }[] = [
+  { key: "photo", label: "Фото", Icon: Camera },
+  { key: "video", label: "Відео", Icon: Video },
+  { key: "east", label: "Схід", Icon: Sunrise },
+  { key: "west", label: "Захід", Icon: Sunset },
+];
+
+interface SlotRecipe {
+  cats: SlotCat[];
+  stars: number;
+  badge: string;
+  desc: string;
+  why: string;
+  Icon: typeof Sun;
+}
+
+// Які фази освітлення стають рекомендованими слотами (нейтрально/жорстке — ні).
+const SLOT_RECIPES: Partial<Record<LightingKey, SlotRecipe>> = {
+  idealAm: {
+    cats: ["photo", "east"],
+    stars: 5,
+    badge: "Ідеально для фото",
+    desc: "М'яке ранкове світло",
+    why: "Оптимальний напрямок світла та м'які тіні створюють ідеальні умови для фото.",
+    Icon: Sunrise,
+  },
+  goodAm: {
+    cats: ["photo"],
+    stars: 4,
+    badge: "Добре для фото",
+    desc: "Розсіяне денне світло",
+    why: "Рівне світло без жорстких тіней — добре для портретів і груп.",
+    Icon: Sun,
+  },
+  idealPm: {
+    cats: ["photo", "west"],
+    stars: 5,
+    badge: "Ідеально для фото",
+    desc: "Золота година, глибокі відтінки",
+    why: "Низьке тепле сонце дає золотий відтінок і довгі м'які тіні.",
+    Icon: Sunset,
+  },
+  bluePm: {
+    cats: ["video", "west"],
+    stars: 4,
+    badge: "Ідеально для відео",
+    desc: "Тепле сутінкове світло",
+    why: "Рівне сутінкове світло — кінематографічна картинка для відео.",
+    Icon: Video,
+  },
+};
+
+interface RecSlot extends SlotRecipe {
+  key: LightingKey;
+  from: Date;
+  to: Date;
+}
+
+function recommendedSlots(weather: DayWeather | null): RecSlot[] {
+  const phases = phasesFromWeather(weather);
+  if (!phases) return [];
+  return phases
+    .map((p) => {
+      const r = SLOT_RECIPES[p.key];
+      return r ? { key: p.key, from: p.from, to: p.to, ...r } : null;
+    })
+    .filter((s): s is RecSlot => s != null)
+    .sort((a, b) => a.from.getTime() - b.from.getTime());
+}
+
+function Stars({ n }: { n: number }) {
+  return (
+    <div className="flex shrink-0" aria-label={`${n} з 5`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={cn(
+            "h-3.5 w-3.5",
+            i < n
+              ? "fill-amber-400 text-amber-400"
+              : "fill-transparent text-muted-foreground/40"
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
+function SlotsView({
+  weather,
+  cat,
+  onCatChange,
+  onBook,
+}: {
+  weather: DayWeather | null;
+  cat: SlotCat;
+  onCatChange: (c: SlotCat) => void;
+  onBook: (at: Date) => void;
+}) {
+  const slots = recommendedSlots(weather);
+  const filtered = slots.filter((s) => s.cats.includes(cat));
+
+  return (
+    <div className="p-4">
+      {/* Фільтр-таби + підказка */}
+      <div className="mb-3 flex items-center gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {CAT_TABS.map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onCatChange(key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                cat === key
+                  ? "border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300"
+                  : "text-muted-foreground hover:bg-accent"
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Як рахуються рекомендації"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-72 text-xs">
+            Слоти рахуються за положенням сонця: схід/захід дають золоту годину,
+            опівдні світло жорстке. Зірки — оцінка якості світла для обраного
+            типу зйомки.
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {!weather?.sunrise ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Немає даних про сонце на цей день
+        </p>
+      ) : filtered.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Немає рекомендованих слотів для «{CAT_TABS.find((t) => t.key === cat)?.label}»
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((s) => (
+            <SlotCard key={s.key} slot={s} onBook={() => onBook(s.from)} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SlotCard({ slot, onBook }: { slot: RecSlot; onBook: () => void }) {
+  const { Icon } = slot;
+  return (
+    <div className="flex items-center gap-3 rounded-lg border px-3 py-2.5">
+      <Icon className="h-5 w-5 shrink-0 text-amber-500" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold tabular-nums">
+            {hhmm(slot.from)} – {hhmm(slot.to)}
+          </span>
+          <Badge
+            variant="secondary"
+            className="bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300"
+          >
+            {slot.badge}
+          </Badge>
+        </div>
+        <div className="truncate text-xs text-muted-foreground">{slot.desc}</div>
+      </div>
+      <Stars n={slot.stars} />
+      <Button
+        size="sm"
+        onClick={onBook}
+        className="shrink-0 bg-violet-600 hover:bg-violet-700"
+      >
+        Забронювати
+      </Button>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label="Чому цей слот рекомендовано?"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-72">
+          <p className="mb-1 text-sm font-medium">
+            Чому цей слот рекомендовано?
+          </p>
+          <p className="text-xs text-muted-foreground">{slot.why}</p>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+// ── Погодинна погода (компактна колонка на таймлайні) ───────────────────────
+// emoji вже передає хмарність; окремих svg-іконок не дублюємо.
+function HourlyWeatherCol({ hourly }: { hourly: HourWeather[] }) {
+  const byHour = new Map(hourly.map((h) => [h.hour, h]));
+  return (
+    <div className="w-12 shrink-0 border-r">
+      {HOURS.map((h) => {
+        const hw = byHour.get(h);
+        if (!hw) return <div key={h} style={{ height: PX_PER_HOUR }} />;
+        const emoji = weatherMeta(hw.code).emoji;
+        const rain = hw.precipProb != null && hw.precipProb >= 40;
+        return (
+          <div
+            key={h}
+            style={{ height: PX_PER_HOUR }}
+            className="flex flex-col items-center justify-center leading-tight"
+            title={`${hw.temp != null ? Math.round(hw.temp) + "°" : ""} · хмарність ${hw.cloud ?? "—"}% · опади ${hw.precipProb ?? 0}%`}
+          >
+            <span className="text-sm">{emoji}</span>
+            {hw.temp != null && (
+              <span className="text-[11px] font-medium tabular-nums">
+                {Math.round(hw.temp)}°
+              </span>
+            )}
+            <span
+              className={cn(
+                "text-[9px] tabular-nums",
+                rain ? "text-blue-500" : "text-muted-foreground"
+              )}
+            >
+              {rain
+                ? `💧${hw.precipProb}%`
+                : hw.cloud != null
+                ? `☁${hw.cloud}%`
+                : ""}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Денний таймлайн ─────────────────────────────────────────────────────────
 function Timeline({
   items,
   highlightId,
+  weather,
+  showWeather,
   onSlotClick,
   onBookingClick,
   onSetPayment,
 }: {
   items: Booking[];
   highlightId: string | null;
+  weather: DayWeather | null;
+  showWeather: boolean;
   onSlotClick: (hour: number) => void;
   onBookingClick: (b: Booking) => void;
   onSetPayment: (
@@ -503,7 +1158,13 @@ function Timeline({
     method: PaymentMethod | null
   ) => void;
 }) {
+  const isMobile = useIsMobile();
   const totalH = HOURS.length * PX_PER_HOUR;
+  const phases = phasesFromWeather(weather);
+  // На мобільному підпис фази = лише іконка (текст ховаємо), записи майже на всю
+  // ширину; на десктопі — повний підпис у лівій смузі.
+  const lane = isMobile ? 30 : LABEL_LANE;
+  const showLabelText = !isMobile;
   // Скрол до підсвіченого запису, коли він з'являється у DOM.
   const scrollToHi = useCallback((node: HTMLElement | null) => {
     if (node)
@@ -525,7 +1186,43 @@ function Timeline({
         ))}
       </div>
 
+      {showWeather && weather?.hourly?.length ? (
+        <HourlyWeatherCol hourly={weather.hourly} />
+      ) : null}
+
       <div className="relative flex-1" style={{ height: totalH }}>
+        {/* Фази освітлення (під сіткою, не перехоплюють кліки). */}
+        {phases?.map((p) => {
+          const top = clampPx(topPx(p.from), totalH);
+          const bottom = clampPx(topPx(p.to), totalH);
+          if (bottom <= top) return null;
+          const m = LIGHTING_META[p.key];
+          const Icon = PHASE_ICON[p.key];
+          return (
+            <div
+              key={p.key}
+              style={{ top, height: bottom - top }}
+              className={cn(
+                "pointer-events-none absolute inset-x-0 flex gap-2.5 px-2 py-2 md:px-4",
+                m.band
+              )}
+            >
+              <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", m.text)} />
+              {showLabelText && (
+                <div
+                  className="leading-tight"
+                  style={{ maxWidth: LABEL_LANE - 46 }}
+                >
+                  <div className="text-sm font-semibold">{m.label}</div>
+                  <div className="text-xs tabular-nums text-muted-foreground">
+                    {hhmm(p.from)} – {hhmm(p.to)}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
         {HOURS.map((h, i) => (
           <button
             key={h}
@@ -541,7 +1238,7 @@ function Timeline({
           const start = tsToDate(b.start);
           if (!start) return null;
           const end = new Date(start.getTime() + b.durationMin * 60000);
-          const meta = STATUS_META[b.status];
+          const meta = STATUS_META[effectiveStatus(b)];
           const h = (b.durationMin / 60) * PX_PER_HOUR;
           const isHi = b.id === highlightId;
           return (
@@ -557,9 +1254,9 @@ function Timeline({
                   onBookingClick(b);
                 }
               }}
-              style={{ top: topPx(start), height: Math.max(h, 22) }}
+              style={{ top: topPx(start), height: Math.max(h, 22), left: lane }}
               className={cn(
-                "absolute left-1 right-2 cursor-pointer overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow hover:shadow-md",
+                "absolute right-2 cursor-pointer overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow hover:shadow-md",
                 meta.cls,
                 isHi &&
                   "z-10 ring-2 ring-violet-500 ring-offset-2 ring-offset-background animate-pulse"
@@ -574,12 +1271,185 @@ function Timeline({
                 {hhmm(start)}–{hhmm(end)}
                 {b.type ? ` · ${b.type}` : ""}
               </div>
+              {b.notes && (
+                <div className="truncate opacity-70">{b.notes}</div>
+              )}
             </div>
           );
         })}
       </div>
     </div>
   );
+}
+
+// ── Освітлення дня ──────────────────────────────────────────────────────────
+function clampPx(px: number, totalH: number) {
+  return Math.max(0, Math.min(totalH, px));
+}
+
+// Іконка кожної фази освітлення.
+const PHASE_ICON: Record<LightingKey, typeof Sun> = {
+  idealAm: Sunrise,
+  goodAm: Sunrise,
+  neutral: Sun,
+  harsh: Sunset,
+  idealPm: Sunset,
+  bluePm: Moon,
+};
+
+// Легенда світлових умов (бічна колонка) — усі фази по порядку дня.
+const LEGEND_KEYS: LightingKey[] = [
+  "idealAm",
+  "goodAm",
+  "neutral",
+  "harsh",
+  "idealPm",
+  "bluePm",
+];
+
+function LightingLegend() {
+  return (
+    <div className="mt-3 border-t pt-3">
+      <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+        Світлові умови
+      </p>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+        {LEGEND_KEYS.map((k) => (
+          <div key={k} className="flex items-center gap-1.5 text-xs">
+            <span
+              className={cn(
+                "h-2.5 w-3 shrink-0 rounded-sm",
+                LIGHTING_META[k].swatch
+              )}
+            />
+            <span className="leading-tight">{LIGHTING_META[k].label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Смужка «Найкращі години сьогодні» над таймлайном.
+const BEST_CARDS: {
+  key: LightingKey;
+  title: string;
+  Icon: typeof Sun;
+}[] = [
+  { key: "idealAm", title: "Східна сторона, фото", Icon: Sunrise },
+  { key: "goodAm", title: "Добре для портретів", Icon: Sun },
+  { key: "idealPm", title: "Західна сторона, фото", Icon: Sunset },
+  { key: "bluePm", title: "Відео / blue hour", Icon: Moon },
+];
+
+function BestHours({ weather }: { weather: DayWeather | null }) {
+  const phases = phasesFromWeather(weather);
+  if (!phases) return null;
+  const byKey = new Map<LightingKey, LightingPhase>(
+    phases.map((p) => [p.key, p])
+  );
+  return (
+    <div className="border-b px-4 py-3">
+      <p className="mb-2 text-sm font-medium">Найкращі години сьогодні</p>
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {BEST_CARDS.map(({ key, title, Icon }) => {
+          const p = byKey.get(key);
+          if (!p) return null;
+          const m = LIGHTING_META[key];
+          return (
+            <div
+              key={key}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border px-3 py-2",
+                m.band
+              )}
+            >
+              <Icon className={cn("h-5 w-5 shrink-0", m.text)} />
+              <div className="min-w-0">
+                <div className="text-sm font-semibold tabular-nums">
+                  {hhmm(p.from)}–{hhmm(p.to)}
+                </div>
+                <div className="truncate text-[11px] text-muted-foreground">
+                  {title}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Картка погоди (бічна колонка, під легендою) ─────────────────────────────
+function WeatherCard({
+  weather,
+  loading,
+}: {
+  weather: DayWeather | null;
+  loading: boolean;
+}) {
+  const meta = weatherMeta(weather?.code ?? null);
+  return (
+    <div className="mt-3 space-y-2 border-t pt-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-muted-foreground">Погода</p>
+        <span className="text-[10px] text-muted-foreground">
+          {DEFAULT_LOCATION.label}
+        </span>
+      </div>
+
+      {loading ? (
+        <Skeleton className="h-20 w-full" />
+      ) : !weather ? (
+        <p className="text-xs text-muted-foreground">Немає даних</p>
+      ) : (
+        <div className="space-y-2">
+          {weather.hasWeather && (
+            <div className="flex items-center gap-2">
+              <span className="text-2xl leading-none">{meta.emoji}</span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">{meta.label}</div>
+                {weather.tempMax != null && (
+                  <div className="text-xs text-muted-foreground tabular-nums">
+                    {fmtTemp(weather.tempMax)}
+                    {weather.tempMin != null
+                      ? ` … ${fmtTemp(weather.tempMin)}`
+                      : ""}
+                  </div>
+                )}
+              </div>
+              {weather.precipProb != null && weather.precipProb > 0 && (
+                <Badge variant="secondary" className="shrink-0 text-[10px]">
+                  💧 {weather.precipProb}%
+                </Badge>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-1.5 text-xs">
+            <div className="flex items-center gap-1.5">
+              <Sunrise className="h-3.5 w-3.5 text-amber-500" />
+              <span className="tabular-nums">
+                {weather.sunrise ? hhmm(weather.sunrise) : "—"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Sunset className="h-3.5 w-3.5 text-orange-500" />
+              <span className="tabular-nums">
+                {weather.sunset ? hhmm(weather.sunset) : "—"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function fmtTemp(t: number): string {
+  const r = Math.round(t);
+  return `${r > 0 ? "+" : ""}${r}°`;
 }
 
 // ── Міні-календар місяця ─────────────────────────────────────────────────────
@@ -633,6 +1503,9 @@ function MiniMonth({
   const shiftMonth = (n: number) =>
     setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + n, 1));
 
+  // Погода місяця (емодзі в кутику дня; у межах прогнозу).
+  const monthWx = useMonthWeather(cursor.getFullYear(), cursor.getMonth());
+
   const todayD = new Date();
 
   return (
@@ -669,6 +1542,9 @@ function MiniMonth({
           const isSel = sameDay(d, selected);
           const isToday = sameDay(d, todayD);
           const busy = busyDays.has(d.getDate());
+          // Минулі дні з записами — позначаємо як завершені (зелена крапка).
+          const past = d < todayD && !isToday;
+          const wx = monthWx.get(d.getDate());
           return (
             <button
               key={i}
@@ -687,8 +1563,18 @@ function MiniMonth({
               )}
             >
               {d.getDate()}
+              {wx && (wx.code != null || wx.daylight != null) && (
+                <span className="pointer-events-none absolute right-0.5 top-0.5 text-xs leading-none">
+                  {monthDayEmoji(wx)}
+                </span>
+              )}
               {busy && !isSel && (
-                <span className="absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-violet-500" />
+                <span
+                  className={cn(
+                    "absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full",
+                    past ? "bg-emerald-500" : "bg-violet-500"
+                  )}
+                />
               )}
             </button>
           );
@@ -967,23 +1853,25 @@ function BookingFormDialog({
             />
           </div>
 
+          <div className="space-y-1">
+            <Label>Дата й час</Label>
+            <Input
+              type="datetime-local"
+              value={startStr}
+              step={300}
+              onChange={(e) => setStartStr(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Дата й час</Label>
-              <Input
-                type="datetime-local"
-                value={startStr}
-                step={300}
-                onChange={(e) => setStartStr(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
+            <div className="min-w-0 space-y-1">
               <Label>Тривалість</Label>
               <Select
                 value={String(durationMin)}
                 onValueChange={(v) => setDurationMin(Number(v))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -995,18 +1883,7 @@ function BookingFormDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Тип зйомки</Label>
-              <Input
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                placeholder="Портрет, Сімейна…"
-              />
-            </div>
-            <div className="space-y-1">
+            <div className="min-w-0 space-y-1">
               <Label>Ціна, ₴</Label>
               <Input
                 type="number"
@@ -1016,6 +1893,15 @@ function BookingFormDialog({
                 inputMode="decimal"
               />
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Тип зйомки</Label>
+            <Input
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              placeholder="Портрет, Сімейна…"
+            />
           </div>
 
           <div className="space-y-1">

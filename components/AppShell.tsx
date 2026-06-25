@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -174,12 +175,36 @@ function MobileHeader() {
   );
 }
 
+// Ховає нижню навігацію при скролі вниз, показує при скролі вгору.
+function useHideOnScroll() {
+  const [hidden, setHidden] = useState(false);
+  const lastY = useRef(0);
+  useEffect(() => {
+    lastY.current = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > lastY.current + 6 && y > 80) setHidden(true);
+      else if (y < lastY.current - 6) setHidden(false);
+      lastY.current = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return hidden;
+}
+
 function BottomNav() {
   const pathname = usePathname();
   const newOrdersCount = useNewOrdersCount();
   const upcomingBookings = useUpcomingBookingsCount();
+  const hidden = useHideOnScroll();
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center border-t bg-card/95 backdrop-blur md:hidden">
+    <nav
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center border-t bg-card/95 backdrop-blur transition-transform duration-300 md:hidden",
+        hidden && "translate-y-full"
+      )}
+    >
       {NAV.map((item) => {
         const Icon = item.icon;
         const active = isActive(pathname, item.href);

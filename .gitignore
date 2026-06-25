@@ -69,3 +69,6 @@ skills-lock.json
 
 # Playwright MCP кеш
 .playwright-mcp/
+
+# Serena MCP cache
+.serena/
