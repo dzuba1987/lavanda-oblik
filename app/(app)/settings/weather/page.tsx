@@ -16,6 +16,12 @@ import {
   type WeatherProvider,
   type DayWeather,
 } from "@/lib/utils/weather";
+import {
+  logWeatherForecasts,
+  loadScoredLog,
+  scoreLog,
+  type ProviderScore,
+} from "@/lib/data/weatherLog";
 
 const PROVIDERS: {
   key: WeatherProvider;
@@ -34,6 +40,25 @@ const PROVIDERS: {
 export default function WeatherSettingsPage() {
   const [provider, setProvider] = useWeatherProvider();
   const canOwm = owmConfigured();
+
+  const loggedProviders: WeatherProvider[] = canOwm
+    ? ["open-meteo", "openweathermap"]
+    : ["open-meteo"];
+
+  // Логер точності: записати прогнози + факт (тротлиться раз/добу), тоді скор.
+  const [scores, setScores] = useState<ProviderScore[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    logWeatherForecasts(loggedProviders)
+      .then(() => loadScoredLog())
+      .then((docs) => {
+        if (alive) setScores(scoreLog(docs, loggedProviders));
+      });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canOwm]);
 
   // Детальний прогноз на 7 днів для обох провайдерів (для порівняння).
   const [week, setWeek] = useState<
@@ -199,8 +224,77 @@ export default function WeatherSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardContent className="space-y-3 px-4 py-4">
+          <h2 className="text-base font-medium">Точність прогнозу</h2>
+          <p className="text-xs text-muted-foreground">
+            Щодня логуємо прогноз кожного провайдера й звіряємо з фактом (аналіз
+            Open-Meteo). Дані накопичуються — звірка точніша з часом.
+          </p>
+
+          {scores == null ? (
+            <p className="text-sm text-muted-foreground">Завантаження…</p>
+          ) : scores.every((s) => s.n === 0) ? (
+            <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+              Ще збираємо дані. Звірка зʼявиться, коли мине кілька залогованих
+              днів (зайдіть на цю сторінку протягом наступних днів).
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-[1fr_5rem_5rem_3rem] items-center gap-2 border-b pb-1 text-xs font-medium text-muted-foreground">
+                <span>Провайдер</span>
+                <span className="text-right">Похибка t°</span>
+                <span className="text-right">Дощ/сухо</span>
+                <span className="text-right">Днів</span>
+              </div>
+              {bestRows(scores).map(({ s, isBest }) => (
+                <div
+                  key={s.provider}
+                  className={cn(
+                    "grid grid-cols-[1fr_5rem_5rem_3rem] items-center gap-2 rounded px-1.5 py-1.5 text-sm",
+                    isBest && "bg-emerald-50 dark:bg-emerald-950/30"
+                  )}
+                >
+                  <span className="flex items-center gap-1.5 truncate font-medium">
+                    {WEATHER_PROVIDER_META[s.provider].label}
+                    {isBest && (
+                      <span className="rounded bg-emerald-600 px-1 text-[10px] text-white">
+                        точніший
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-right tabular-nums">
+                    {s.maeTemp != null ? `±${s.maeTemp.toFixed(1)}°` : "—"}
+                  </span>
+                  <span className="text-right tabular-nums">
+                    {s.wetAccuracy != null
+                      ? `${Math.round(s.wetAccuracy)}%`
+                      : "—"}
+                  </span>
+                  <span className="text-right tabular-nums text-muted-foreground">
+                    {s.n}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
+}
+
+/** Позначити провайдера з найменшою похибкою t° (мін. 2 звірені дні). */
+function bestRows(
+  scores: ProviderScore[]
+): { s: ProviderScore; isBest: boolean }[] {
+  const eligible = scores.filter((s) => s.maeTemp != null && s.n >= 2);
+  const best =
+    eligible.length > 1
+      ? eligible.reduce((a, b) => (a.maeTemp! <= b.maeTemp! ? a : b)).provider
+      : null;
+  return scores.map((s) => ({ s, isBest: s.provider === best }));
 }
 
 function ProviderCell({

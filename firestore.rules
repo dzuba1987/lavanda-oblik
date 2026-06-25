@@ -226,6 +226,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ===== weatherLog (логи прогнозів провайдерів для оцінки точності) =====
+    // Doc id = "YYYY-MM-DD". Поля довільні (forecast/actual). Лише admin.
+    match /weatherLog/{date} {
+      allow read, write: if isAdmin();
+    }
+
     // ===== Все інше — заборонено =====
     match /{document=**} { allow read, write: if false; }
   }
