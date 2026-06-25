@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import {
   useWeatherProvider,
   owmConfigured,
+  metnoConfigured,
   WEATHER_PROVIDER_META,
   weatherMeta,
   fetchDayWeather,
@@ -23,50 +24,56 @@ import {
   type ProviderScore,
 } from "@/lib/data/weatherLog";
 
-const PROVIDERS: {
-  key: WeatherProvider;
-  desc: string;
-}[] = [
-  {
-    key: "open-meteo",
+const PROVIDER_INFO: Record<
+  WeatherProvider,
+  { desc: string; hint?: string }
+> = {
+  "open-meteo": {
     desc: "Безкоштовний, без ключа. ~16 днів уперед. Джерело сходу/заходу сонця.",
   },
-  {
-    key: "openweathermap",
-    desc: "Потрібен API-ключ. Прогноз 5 днів / крок 3 год. Для порівняння.",
+  openweathermap: {
+    desc: "Прогноз 5 днів / крок 3 год. Станційні дані.",
+    hint: "Додайте NEXT_PUBLIC_OPENWEATHER_KEY у .env.local",
   },
-];
+  metno: {
+    desc: "Норвезька метеослужба (yr.no). Через бекенд-проксі, незалежна модель.",
+    hint: "Потрібен налаштований бекенд invest-notify (NOTIFY_API_*)",
+  },
+};
+
+// OpenWeatherMap прибрано зі списку — давав неточний прогноз для локації.
+const ALL_PROVIDERS: WeatherProvider[] = ["open-meteo", "metno"];
 
 export default function WeatherSettingsPage() {
   const [provider, setProvider] = useWeatherProvider();
   const canOwm = owmConfigured();
+  const canMet = metnoConfigured();
 
-  const loggedProviders: WeatherProvider[] = canOwm
-    ? ["open-meteo", "openweathermap"]
-    : ["open-meteo"];
+  const isAvailable = (p: WeatherProvider) =>
+    p === "open-meteo" ||
+    (p === "openweathermap" && canOwm) ||
+    (p === "metno" && canMet);
+
+  const available = ALL_PROVIDERS.filter(isAvailable);
 
   // Логер точності: записати прогнози + факт (тротлиться раз/добу), тоді скор.
   const [scores, setScores] = useState<ProviderScore[] | null>(null);
   useEffect(() => {
     let alive = true;
-    logWeatherForecasts(loggedProviders)
+    logWeatherForecasts(available)
       .then(() => loadScoredLog())
       .then((docs) => {
-        if (alive) setScores(scoreLog(docs, loggedProviders));
+        if (alive) setScores(scoreLog(docs, available));
       });
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canOwm]);
+  }, [canOwm, canMet]);
 
-  // Детальний прогноз на 7 днів для обох провайдерів (для порівняння).
+  // Детальний прогноз на 7 днів для всіх доступних провайдерів (порівняння).
   const [week, setWeek] = useState<
-    {
-      day: Date;
-      "open-meteo": DayWeather | null;
-      openweathermap: DayWeather | null;
-    }[]
+    { day: Date; wx: Partial<Record<WeatherProvider, DayWeather | null>> }[]
   >([]);
   useEffect(() => {
     let alive = true;
@@ -77,20 +84,21 @@ export default function WeatherSettingsPage() {
       return d;
     });
     Promise.all(
-      days.map(async (d) => ({
-        day: d,
-        "open-meteo": await fetchDayWeather(d, DEFAULT_LOCATION, "open-meteo"),
-        openweathermap: canOwm
-          ? await fetchDayWeather(d, DEFAULT_LOCATION, "openweathermap")
-          : null,
-      }))
+      days.map(async (d) => {
+        const wx: Partial<Record<WeatherProvider, DayWeather | null>> = {};
+        for (const p of available) {
+          wx[p] = await fetchDayWeather(d, DEFAULT_LOCATION, p);
+        }
+        return { day: d, wx };
+      })
     ).then((rows) => {
       if (alive) setWeek(rows);
     });
     return () => {
       alive = false;
     };
-  }, [canOwm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canOwm, canMet]);
 
   return (
     <main className="container mx-auto flex flex-1 flex-col gap-6 px-4 py-6">
@@ -109,15 +117,16 @@ export default function WeatherSettingsPage() {
           </div>
 
           <div className="space-y-2">
-            {PROVIDERS.map((p) => {
-              const active = provider === p.key;
-              const disabled = p.key === "openweathermap" && !canOwm;
+            {ALL_PROVIDERS.map((p) => {
+              const active = provider === p;
+              const disabled = !isAvailable(p);
+              const info = PROVIDER_INFO[p];
               return (
                 <button
-                  key={p.key}
+                  key={p}
                   type="button"
                   disabled={disabled}
-                  onClick={() => setProvider(p.key)}
+                  onClick={() => setProvider(p)}
                   className={cn(
                     "flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors",
                     active
@@ -138,12 +147,14 @@ export default function WeatherSettingsPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium">
-                      {WEATHER_PROVIDER_META[p.key].label}
+                      {WEATHER_PROVIDER_META[p].label}
                     </div>
-                    <div className="text-xs text-muted-foreground">{p.desc}</div>
-                    {disabled && (
+                    <div className="text-xs text-muted-foreground">
+                      {info.desc}
+                    </div>
+                    {disabled && info.hint && (
                       <div className="mt-1 text-xs text-amber-600">
-                        Додайте NEXT_PUBLIC_OPENWEATHER_KEY у .env.local
+                        {info.hint}
                       </div>
                     )}
                   </div>
@@ -162,66 +173,69 @@ export default function WeatherSettingsPage() {
 
       <Card>
         <CardContent className="space-y-3 px-4 py-4">
-          <h2 className="text-base font-medium">
-            Порівняння прогнозу · 7 днів
-          </h2>
+          <h2 className="text-base font-medium">Порівняння прогнозу · 7 днів</h2>
           <p className="text-xs text-muted-foreground">
-            OpenWeatherMap покриває лише ~5 днів уперед.
+            Open-Meteo ~16 днів, Met.no ~9 днів уперед.
           </p>
 
-          {/* Заголовок колонок */}
-          <div className="grid grid-cols-[5rem_1fr_1fr] items-center gap-2 border-b pb-1 text-xs font-medium text-muted-foreground">
-            <span>День</span>
-            <span
-              className={cn(
-                "rounded px-1.5 py-0.5",
-                provider === "open-meteo" &&
-                  "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-200"
-              )}
-            >
-              {WEATHER_PROVIDER_META["open-meteo"].label}
-            </span>
-            <span
-              className={cn(
-                "rounded px-1.5 py-0.5",
-                provider === "openweathermap" &&
-                  "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-200"
-              )}
-            >
-              {WEATHER_PROVIDER_META.openweathermap.label}
-            </span>
-          </div>
-
-          <div className="divide-y">
-            {week.length === 0 ? (
-              <p className="py-3 text-sm text-muted-foreground">
-                Завантаження…
-              </p>
-            ) : (
-              week.map((row, i) => {
-                const om = row["open-meteo"];
-                const owm = row.openweathermap;
-                const diff =
-                  om?.code != null &&
-                  owm?.code != null &&
-                  weatherMeta(om.code).label !== weatherMeta(owm.code).label;
-                return (
-                  <div
-                    key={i}
-                    className="grid grid-cols-[5rem_1fr_1fr] items-center gap-2 py-2 text-sm"
+          {week.length === 0 ? (
+            <p className="py-3 text-sm text-muted-foreground">Завантаження…</p>
+          ) : (
+            <>
+              {/* Заголовок: колонка на кожен провайдер */}
+              <div
+                className="grid items-center gap-2 border-b pb-1 text-xs font-medium text-muted-foreground"
+                style={{
+                  gridTemplateColumns: `6rem repeat(${available.length}, minmax(0,1fr))`,
+                }}
+              >
+                <span>День</span>
+                {available.map((p) => (
+                  <span
+                    key={p}
+                    className={cn(
+                      "rounded px-1.5 py-0.5",
+                      provider === p &&
+                        "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-200"
+                    )}
                   >
-                    <span className="text-xs font-medium capitalize">
-                      {i === 0
-                        ? "Сьогодні"
-                        : format(row.day, "EEE, d MMM", { locale: uk })}
-                    </span>
-                    <ProviderCell w={om} />
-                    <ProviderCell w={owm} highlight={diff} disabled={!canOwm} />
-                  </div>
-                );
-              })
-            )}
-          </div>
+                    {WEATHER_PROVIDER_META[p].label}
+                  </span>
+                ))}
+              </div>
+
+              <div className="divide-y">
+                {week.map((row, i) => {
+                  const base = row.wx["open-meteo"];
+                  return (
+                    <div
+                      key={i}
+                      className="grid items-center gap-2 py-2"
+                      style={{
+                        gridTemplateColumns: `6rem repeat(${available.length}, minmax(0,1fr))`,
+                      }}
+                    >
+                      <span className="text-xs font-medium capitalize">
+                        {i === 0
+                          ? "Сьогодні"
+                          : format(row.day, "EEE, d MMM", { locale: uk })}
+                      </span>
+                      {available.map((p) => {
+                        const w = row.wx[p] ?? null;
+                        const diff =
+                          p !== "open-meteo" &&
+                          base?.code != null &&
+                          w?.code != null &&
+                          weatherMeta(base.code).label !==
+                            weatherMeta(w.code).label;
+                        return <ProviderCell key={p} w={w} highlight={diff} />;
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -300,15 +314,10 @@ function bestRows(
 function ProviderCell({
   w,
   highlight,
-  disabled,
 }: {
   w: DayWeather | null;
   highlight?: boolean;
-  disabled?: boolean;
 }) {
-  if (disabled) {
-    return <span className="text-xs text-muted-foreground">—</span>;
-  }
   if (!w?.hasWeather) {
     return <span className="text-xs text-muted-foreground">немає даних</span>;
   }
@@ -316,7 +325,7 @@ function ProviderCell({
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5",
+        "flex flex-1 items-center gap-1.5",
         highlight && "font-medium text-amber-600 dark:text-amber-400"
       )}
     >

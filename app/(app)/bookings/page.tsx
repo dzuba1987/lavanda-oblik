@@ -87,7 +87,7 @@ import {
   DEFAULT_LOCATION,
   dayKey,
   fetchDayWeather,
-  owmConfigured,
+  metnoConfigured,
   useWeatherProvider,
   WEATHER_PROVIDER_META,
   type WeatherProvider,
@@ -1468,21 +1468,26 @@ function WeatherCard({
 }) {
   const meta = weatherMeta(weather?.code ?? null);
   const [provider, setProvider] = useWeatherProvider();
-  const canCompare = owmConfigured();
+  const available: WeatherProvider[] = [
+    "open-meteo",
+    ...(metnoConfigured() ? (["metno"] as WeatherProvider[]) : []),
+  ];
+  const canCompare = available.length > 1;
 
-  // Прогноз обох провайдерів для порівняння (кеш дедуплікує активний).
-  const [both, setBoth] = useState<{
-    "open-meteo": DayWeather | null;
-    openweathermap: DayWeather | null;
-  }>({ "open-meteo": null, openweathermap: null });
+  // Прогноз усіх доступних провайдерів для порівняння (кеш дедуплікує активний).
+  const [both, setBoth] = useState<
+    Partial<Record<WeatherProvider, DayWeather | null>>
+  >({});
   useEffect(() => {
     if (!canCompare) return;
     let alive = true;
-    Promise.all([
-      fetchDayWeather(day, DEFAULT_LOCATION, "open-meteo"),
-      fetchDayWeather(day, DEFAULT_LOCATION, "openweathermap"),
-    ]).then(([om, owm]) => {
-      if (alive) setBoth({ "open-meteo": om, openweathermap: owm });
+    Promise.all(
+      available.map((p) => fetchDayWeather(day, DEFAULT_LOCATION, p))
+    ).then((res) => {
+      if (!alive) return;
+      const map: Partial<Record<WeatherProvider, DayWeather | null>> = {};
+      available.forEach((p, i) => (map[p] = res[i]));
+      setBoth(map);
     });
     return () => {
       alive = false;
@@ -1501,19 +1506,19 @@ function WeatherCard({
 
       {canCompare && (
         <div className="flex rounded-md border p-0.5 text-[11px]">
-          {(["open-meteo", "openweathermap"] as WeatherProvider[]).map((p) => (
+          {available.map((p) => (
             <button
               key={p}
               type="button"
               onClick={() => setProvider(p)}
               className={cn(
-                "flex-1 rounded px-2 py-1 font-medium transition-colors",
+                "flex-1 rounded px-1.5 py-1 font-medium transition-colors",
                 provider === p
                   ? "bg-violet-600 text-white"
                   : "text-muted-foreground hover:bg-accent"
               )}
             >
-              {WEATHER_PROVIDER_META[p].label}
+              {WEATHER_PROVIDER_META[p].short}
             </button>
           ))}
         </div>
@@ -1569,8 +1574,8 @@ function WeatherCard({
           <p className="text-[10px] font-medium text-muted-foreground">
             Порівняння прогнозу
           </p>
-          {(["open-meteo", "openweathermap"] as WeatherProvider[]).map((p) => {
-            const w = both[p];
+          {available.map((p) => {
+            const w = both[p] ?? null;
             const m = weatherMeta(w?.code ?? null);
             return (
               <div

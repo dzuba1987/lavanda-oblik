@@ -16,7 +16,7 @@ export const DEFAULT_LOCATION = {
 // ── Провайдери погоди ───────────────────────────────────────────────────────
 // Open-Meteo — основний (без ключа, +схід/захід). OpenWeatherMap — другий, для
 // порівняння прогнозу (потрібен ключ NEXT_PUBLIC_OPENWEATHER_KEY, free 5д/3год).
-export type WeatherProvider = "open-meteo" | "openweathermap";
+export type WeatherProvider = "open-meteo" | "openweathermap" | "metno";
 
 export const WEATHER_PROVIDER_META: Record<
   WeatherProvider,
@@ -24,13 +24,24 @@ export const WEATHER_PROVIDER_META: Record<
 > = {
   "open-meteo": { label: "Open-Meteo", short: "OM" },
   openweathermap: { label: "OpenWeatherMap", short: "OWM" },
+  metno: { label: "Met.no (yr.no)", short: "MET" },
 };
 
 const OWM_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_KEY ?? "";
 
+// Met.no тягнемо через бекенд-проксі invest-notify (у браузері Met.no без CORS
+// і блокує браузерний User-Agent). Той самий API base/key, що й для Telegram.
+const NOTIFY_BASE = (process.env.NEXT_PUBLIC_NOTIFY_API_BASE ?? "").replace(/\/$/, "");
+const NOTIFY_KEY = process.env.NEXT_PUBLIC_NOTIFY_API_KEY ?? "";
+
 /** Чи налаштований OpenWeatherMap (є ключ). */
 export function owmConfigured(): boolean {
   return OWM_KEY !== "";
+}
+
+/** Чи доступний Met.no (налаштований бекенд-проксі). */
+export function metnoConfigured(): boolean {
+  return NOTIFY_BASE !== "" && NOTIFY_KEY !== "";
 }
 
 const PROVIDER_LS_KEY = "lavanda.weatherProvider";
@@ -40,7 +51,9 @@ const providerListeners = new Set<() => void>();
 export function getWeatherProvider(): WeatherProvider {
   if (typeof window === "undefined") return "open-meteo";
   const v = window.localStorage.getItem(PROVIDER_LS_KEY);
-  if (v === "openweathermap" && owmConfigured()) return "openweathermap";
+  // OpenWeatherMap прибрано зі списку (неточний прогноз) — лишаємо лише на
+  // випадок ручного логування/порівняння, але як активний не пропонуємо.
+  if (v === "metno" && metnoConfigured()) return "metno";
   return "open-meteo";
 }
 
@@ -159,7 +172,9 @@ export function fetchDayWeather(
   const p =
     provider === "openweathermap"
       ? fetchDayOwm(day, loc)
-      : fetchDayOpenMeteo(day, loc);
+      : provider === "metno"
+        ? fetchDayMetno(day, loc)
+        : fetchDayOpenMeteo(day, loc);
   cache.set(cacheKey, p);
   return p;
 }
@@ -406,6 +421,124 @@ async function fetchDayOwm(
   };
 }
 
+// ── Met.no (через бекенд-проксі) ────────────────────────────────────────────
+// Бекенд віддає погодинний прогноз: time (локальний ISO), temp, cloud, code
+// (WMO), precip. Схід/захід — з Open-Meteo (астрономічні).
+interface MetnoHour {
+  time: string;
+  temp: number | null;
+  cloud: number | null;
+  code: number | null;
+  precip: number | null;
+}
+
+const metnoCache = new Map<string, Promise<MetnoHour[] | null>>();
+
+function fetchMetnoForecast(loc: typeof DEFAULT_LOCATION): Promise<MetnoHour[] | null> {
+  const ck = `${loc.lat},${loc.lon}`;
+  const hit = metnoCache.get(ck);
+  if (hit) return hit;
+  if (!metnoConfigured()) {
+    const p = Promise.resolve<MetnoHour[] | null>(null);
+    metnoCache.set(ck, p);
+    return p;
+  }
+  const url = `${NOTIFY_BASE}/lavanda/weather/metno?lat=${loc.lat}&lon=${loc.lon}`;
+  const p = fetch(url, { headers: { "X-API-Key": NOTIFY_KEY } })
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then((j) => (j?.ok ? (j.hours as MetnoHour[]) : null))
+    .catch((e) => {
+      console.warn("fetchMetnoForecast failed", e);
+      metnoCache.delete(ck);
+      return null;
+    });
+  metnoCache.set(ck, p);
+  return p;
+}
+
+// Met.no не дає ймовірності опадів — синтезуємо «мокро» з коду (≥51).
+const metnoPrecipProb = (code: number | null) =>
+  code != null && code >= 51 ? 100 : 0;
+
+async function fetchDayMetno(
+  day: Date,
+  loc: typeof DEFAULT_LOCATION
+): Promise<DayWeather | null> {
+  const key = dayKey(day);
+  const [sun, hours] = await Promise.all([fetchSun(day, loc), fetchMetnoForecast(loc)]);
+  const sunrise = sun?.sunrise ?? null;
+  const sunset = sun?.sunset ?? null;
+  const goldenAm: [Date, Date] | null = sunrise
+    ? [sunrise, new Date(sunrise.getTime() + GOLDEN_MIN * 60000)]
+    : null;
+  const goldenPm: [Date, Date] | null = sunset
+    ? [new Date(sunset.getTime() - GOLDEN_MIN * 60000), sunset]
+    : null;
+
+  const items = (hours ?? []).filter((h) => {
+    const d = parseLocal(h.time);
+    return d != null && dayKey(d) === key;
+  });
+  const hourly: HourWeather[] = items.map((h) => {
+    const d = parseLocal(h.time)!;
+    return {
+      hour: d.getHours(),
+      temp: h.temp,
+      code: h.code,
+      cloud: h.cloud,
+      precipProb: metnoPrecipProb(h.code),
+      precip: h.precip ?? 0,
+    };
+  });
+  const temps = items.map((h) => h.temp).filter((n): n is number => n != null);
+  const codes = hourly.map((h) => h.code).filter((c): c is number => c != null);
+  const code = codes.length ? Math.max(...codes) : null;
+  return {
+    key,
+    sunrise,
+    sunset,
+    hourly,
+    goldenAm,
+    goldenPm,
+    tempMax: temps.length ? Math.round(Math.max(...temps)) : null,
+    tempMin: temps.length ? Math.round(Math.min(...temps)) : null,
+    code,
+    precipProb: code != null ? metnoPrecipProb(code) : null,
+    hasWeather: hourly.length > 0,
+  };
+}
+
+async function fetchMonthMetno(
+  year: number,
+  month0: number,
+  loc: typeof DEFAULT_LOCATION
+): Promise<Map<number, MonthDayWx>> {
+  const hours = await fetchMetnoForecast(loc);
+  const m = new Map<number, MonthDayWx>();
+  if (!hours) return m;
+  const byDay = new Map<number, { hour: number; code: number; wet: boolean }[]>();
+  for (const h of hours) {
+    const d = parseLocal(h.time);
+    if (!d || d.getFullYear() !== year || d.getMonth() !== month0) continue;
+    const day = d.getDate();
+    const arr = byDay.get(day) ?? [];
+    arr.push({ hour: d.getHours(), code: h.code ?? 3, wet: (h.code ?? 0) >= 51 });
+    byDay.set(day, arr);
+  }
+  for (const [day, arr] of byDay) {
+    const noon = arr.reduce((a, b) =>
+      Math.abs(b.hour - 12) < Math.abs(a.hour - 12) ? b : a
+    );
+    m.set(day, {
+      code: noon.code,
+      precipProb: arr.some((x) => x.wet) ? 100 : 0,
+      sunshine: null,
+      daylight: null,
+    });
+  }
+  return m;
+}
+
 // ── Погода на місяць (для позначок у міні-календарі) ────────────────────────
 export interface MonthDayWx {
   code: number | null;
@@ -432,6 +565,11 @@ export function fetchMonthWeather(
 
   if (provider === "openweathermap") {
     const p = fetchMonthOwm(year, month0, loc);
+    monthCache.set(key, p);
+    return p;
+  }
+  if (provider === "metno") {
+    const p = fetchMonthMetno(year, month0, loc);
     monthCache.set(key, p);
     return p;
   }
