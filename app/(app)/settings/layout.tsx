@@ -12,6 +12,7 @@ const SECTION_LABELS: Record<string, string> = {
   customers: "Клієнти",
   import: "Імпорт з Excel",
   notifications: "Сповіщення",
+  weather: "Погода",
   changelog: "Новини для користувачів",
   users: "Користувачі",
   dev: "Інструменти адміна",

@@ -13,6 +13,63 @@ export const DEFAULT_LOCATION = {
   label: "Kvita, Павлівка",
 };
 
+// ── Провайдери погоди ───────────────────────────────────────────────────────
+// Open-Meteo — основний (без ключа, +схід/захід). OpenWeatherMap — другий, для
+// порівняння прогнозу (потрібен ключ NEXT_PUBLIC_OPENWEATHER_KEY, free 5д/3год).
+export type WeatherProvider = "open-meteo" | "openweathermap";
+
+export const WEATHER_PROVIDER_META: Record<
+  WeatherProvider,
+  { label: string; short: string }
+> = {
+  "open-meteo": { label: "Open-Meteo", short: "OM" },
+  openweathermap: { label: "OpenWeatherMap", short: "OWM" },
+};
+
+const OWM_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_KEY ?? "";
+
+/** Чи налаштований OpenWeatherMap (є ключ). */
+export function owmConfigured(): boolean {
+  return OWM_KEY !== "";
+}
+
+const PROVIDER_LS_KEY = "lavanda.weatherProvider";
+const providerListeners = new Set<() => void>();
+
+/** Активний провайдер (з localStorage; default Open-Meteo). */
+export function getWeatherProvider(): WeatherProvider {
+  if (typeof window === "undefined") return "open-meteo";
+  const v = window.localStorage.getItem(PROVIDER_LS_KEY);
+  if (v === "openweathermap" && owmConfigured()) return "openweathermap";
+  return "open-meteo";
+}
+
+/** Змінити активний провайдер (сповіщає всі хуки). */
+export function setWeatherProvider(p: WeatherProvider): void {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(PROVIDER_LS_KEY, p);
+  }
+  providerListeners.forEach((f) => f());
+}
+
+/** Хук: активний провайдер + сеттер. Реагує на зміни в інших компонентах. */
+export function useWeatherProvider(): [
+  WeatherProvider,
+  (p: WeatherProvider) => void,
+] {
+  // Старт із default, щоб уникнути hydration mismatch; синхронізуємо в ефекті.
+  const [p, setP] = useState<WeatherProvider>("open-meteo");
+  useEffect(() => {
+    const sync = () => setP(getWeatherProvider());
+    sync();
+    providerListeners.add(sync);
+    return () => {
+      providerListeners.delete(sync);
+    };
+  }, []);
+  return [p, setWeatherProvider];
+}
+
 export interface HourWeather {
   /** Локальна година 0..23. */
   hour: number;
@@ -86,29 +143,42 @@ function parseLocal(s: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-// Кеш по ключу дати+локації, щоб не смикати API повторно в одній сесії.
+// Кеш по ключу дати+локації+провайдера, щоб не смикати API повторно в сесії.
 const cache = new Map<string, Promise<DayWeather | null>>();
 
 export function fetchDayWeather(
   day: Date,
-  loc = DEFAULT_LOCATION
+  loc = DEFAULT_LOCATION,
+  provider: WeatherProvider = getWeatherProvider()
 ): Promise<DayWeather | null> {
   const key = dayKey(day);
-  const cacheKey = `${key}@${loc.lat},${loc.lon}`;
+  const cacheKey = `${provider}|${key}@${loc.lat},${loc.lon}`;
   const hit = cache.get(cacheKey);
   if (hit) return hit;
 
+  const p =
+    provider === "openweathermap"
+      ? fetchDayOwm(day, loc)
+      : fetchDayOpenMeteo(day, loc);
+  cache.set(cacheKey, p);
+  return p;
+}
+
+function fetchDayOpenMeteo(
+  day: Date,
+  loc: typeof DEFAULT_LOCATION
+): Promise<DayWeather | null> {
+  const key = dayKey(day);
+
   // Поза вікном прогнозу — не смикаємо API (інакше 400). Даних нема.
   if (!inForecast(day)) {
-    const p = Promise.resolve<DayWeather | null>(null);
-    cache.set(cacheKey, p);
-    return p;
+    return Promise.resolve<DayWeather | null>(null);
   }
 
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}` +
     `&longitude=${loc.lon}` +
-    `&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max` +
+    `&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunshine_duration,daylight_duration` +
     `&hourly=temperature_2m,weather_code,cloud_cover,precipitation_probability,precipitation` +
     `&timezone=auto&start_date=${key}&end_date=${key}`;
 
@@ -119,7 +189,14 @@ export function fetchDayWeather(
       const sunrise = parseLocal(d.sunrise?.[0]);
       const sunset = parseLocal(d.sunset?.[0]);
       const tempMax = d.temperature_2m_max?.[0] ?? null;
-      const code = d.weather_code?.[0] ?? null;
+      // Денний weather_code «песимістичний» (найгірша година). Для сухих днів
+      // пом'якшуємо за часткою сонячного сяйва (як monthDayEmoji), щоб не було
+      // «Хмарно» при +40°. Опади/туман/гроза (≥45) лишаємо за кодом.
+      const code = softenDayCode(
+        d.weather_code?.[0] ?? null,
+        d.sunshine_duration?.[0] ?? null,
+        d.daylight_duration?.[0] ?? null
+      );
 
       const goldenAm: [Date, Date] | null = sunrise
         ? [sunrise, new Date(sunrise.getTime() + GOLDEN_MIN * 60000)]
@@ -157,13 +234,176 @@ export function fetchDayWeather(
       };
     })
     .catch((e) => {
-      console.warn("fetchDayWeather failed", e);
-      cache.delete(cacheKey); // дати шанс ретраю при наступному запиті
+      console.warn("fetchDayOpenMeteo failed", e);
       return null;
     });
 
-  cache.set(cacheKey, p);
   return p;
+}
+
+// ── OpenWeatherMap (другий провайдер) ───────────────────────────────────────
+// Free tier: /data/2.5/forecast — 5 днів / крок 3 год, час у UTC + city.timezone
+// (offset, с). Схід/захід беремо з Open-Meteo (астрономічні, для будь-якої дати).
+
+/** OWM condition id → наближений WMO weather code (щоб перевикористати weatherMeta). */
+function owmIdToWmo(id: number): number {
+  if (id >= 200 && id < 300) return 95; // гроза
+  if (id >= 300 && id < 400) return 53; // мряка
+  if (id >= 500 && id < 600) {
+    if (id === 500) return 61;
+    if (id === 501) return 63;
+    if (id <= 504) return 65;
+    if (id === 511) return 66; // льодяний дощ
+    if (id >= 520) return 81; // зливи
+    return 63;
+  }
+  if (id >= 600 && id < 700) {
+    if (id <= 601) return 73;
+    if (id === 602) return 75;
+    if (id >= 611 && id <= 616) return 66; // мокрий сніг
+    return 85; // снігові заряди
+  }
+  if (id >= 700 && id < 800) return 45; // туман/імла
+  if (id === 800) return 0; // ясно
+  if (id === 801) return 1;
+  if (id === 802) return 2;
+  return 3; // 803/804 — хмарно
+}
+
+interface OwmForecast {
+  list: OwmItem[];
+  tz: number; // offset, с
+}
+interface OwmItem {
+  dt: number;
+  main?: { temp?: number };
+  weather?: { id?: number }[];
+  clouds?: { all?: number };
+  pop?: number;
+  rain?: { "3h"?: number };
+  snow?: { "3h"?: number };
+}
+
+// Один виклик forecast покриває всі 5 днів → кеш по локації.
+const owmCache = new Map<string, Promise<OwmForecast | null>>();
+
+function fetchOwmForecast(loc: typeof DEFAULT_LOCATION): Promise<OwmForecast | null> {
+  const ck = `${loc.lat},${loc.lon}`;
+  const hit = owmCache.get(ck);
+  if (hit) return hit;
+  if (!OWM_KEY) {
+    const p = Promise.resolve<OwmForecast | null>(null);
+    owmCache.set(ck, p);
+    return p;
+  }
+  const url =
+    `https://api.openweathermap.org/data/2.5/forecast?lat=${loc.lat}` +
+    `&lon=${loc.lon}&units=metric&lang=ua&appid=${OWM_KEY}`;
+  const p = fetch(url)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then(
+      (j): OwmForecast => ({
+        list: (j?.list ?? []) as OwmItem[],
+        tz: j?.city?.timezone ?? 0,
+      })
+    )
+    .catch((e) => {
+      console.warn("fetchOwmForecast failed", e);
+      owmCache.delete(ck);
+      return null;
+    });
+  owmCache.set(ck, p);
+  return p;
+}
+
+/** Локальний час OWM-елемента (dt у UTC + offset зони). Читати через getUTC*. */
+function owmLocal(it: OwmItem, tz: number): Date {
+  return new Date((it.dt + tz) * 1000);
+}
+function owmKey(it: OwmItem, tz: number): string {
+  const d = owmLocal(it, tz);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}
+
+// Схід/захід завжди з Open-Meteo (астрономічні, надійні поза вікном OWM).
+const sunCache = new Map<string, Promise<{ sunrise: Date | null; sunset: Date | null } | null>>();
+function fetchSun(
+  day: Date,
+  loc: typeof DEFAULT_LOCATION
+): Promise<{ sunrise: Date | null; sunset: Date | null } | null> {
+  const key = dayKey(day);
+  const ck = `${key}@${loc.lat},${loc.lon}`;
+  const hit = sunCache.get(ck);
+  if (hit) return hit;
+  if (!inForecast(day)) {
+    const p = Promise.resolve(null);
+    sunCache.set(ck, p);
+    return p;
+  }
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}` +
+    `&longitude=${loc.lon}&daily=sunrise,sunset&timezone=auto` +
+    `&start_date=${key}&end_date=${key}`;
+  const p = fetch(url)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then((j) => ({
+      sunrise: parseLocal(j?.daily?.sunrise?.[0]),
+      sunset: parseLocal(j?.daily?.sunset?.[0]),
+    }))
+    .catch((e) => {
+      console.warn("fetchSun failed", e);
+      sunCache.delete(ck);
+      return null;
+    });
+  sunCache.set(ck, p);
+  return p;
+}
+
+async function fetchDayOwm(
+  day: Date,
+  loc: typeof DEFAULT_LOCATION
+): Promise<DayWeather | null> {
+  const key = dayKey(day);
+  const [sun, owm] = await Promise.all([fetchSun(day, loc), fetchOwmForecast(loc)]);
+  const sunrise = sun?.sunrise ?? null;
+  const sunset = sun?.sunset ?? null;
+  const goldenAm: [Date, Date] | null = sunrise
+    ? [sunrise, new Date(sunrise.getTime() + GOLDEN_MIN * 60000)]
+    : null;
+  const goldenPm: [Date, Date] | null = sunset
+    ? [new Date(sunset.getTime() - GOLDEN_MIN * 60000), sunset]
+    : null;
+
+  const tz = owm?.tz ?? 0;
+  const items = (owm?.list ?? []).filter((it) => owmKey(it, tz) === key);
+  const hourly: HourWeather[] = items.map((it) => {
+    const d = owmLocal(it, tz);
+    return {
+      hour: d.getUTCHours(),
+      temp: it.main?.temp ?? null,
+      code: owmIdToWmo(it.weather?.[0]?.id ?? 800),
+      cloud: it.clouds?.all ?? null,
+      precipProb: it.pop != null ? Math.round(it.pop * 100) : null,
+      precip: it.rain?.["3h"] ?? it.snow?.["3h"] ?? 0,
+    };
+  });
+
+  const temps = items.map((i) => i.main?.temp).filter((n): n is number => n != null);
+  const codes = hourly.map((h) => h.code).filter((c): c is number => c != null);
+  const pops = items.map((i) => i.pop ?? 0);
+  return {
+    key,
+    sunrise,
+    sunset,
+    hourly,
+    goldenAm,
+    goldenPm,
+    tempMax: temps.length ? Math.round(Math.max(...temps)) : null,
+    tempMin: temps.length ? Math.round(Math.min(...temps)) : null,
+    code: codes.length ? Math.max(...codes) : null, // песимістичний, як в Open-Meteo
+    precipProb: pops.length ? Math.round(Math.max(...pops) * 100) : null,
+    hasWeather: hourly.length > 0,
+  };
 }
 
 // ── Погода на місяць (для позначок у міні-календарі) ────────────────────────
@@ -182,12 +422,19 @@ const monthCache = new Map<string, Promise<Map<number, MonthDayWx>>>();
 export function fetchMonthWeather(
   year: number,
   month0: number,
-  loc = DEFAULT_LOCATION
+  loc = DEFAULT_LOCATION,
+  provider: WeatherProvider = getWeatherProvider()
 ): Promise<Map<number, MonthDayWx>> {
   const mk = `${year}-${month0}`;
-  const key = `${mk}@${loc.lat},${loc.lon}`;
+  const key = `${provider}|${mk}@${loc.lat},${loc.lon}`;
   const hit = monthCache.get(key);
   if (hit) return hit;
+
+  if (provider === "openweathermap") {
+    const p = fetchMonthOwm(year, month0, loc);
+    monthCache.set(key, p);
+    return p;
+  }
 
   // Open-Meteo forecast дає ~−90…+15 днів. Клампимо діапазон місяця у це вікно,
   // інакше API повертає 400 (out of allowed range).
@@ -236,17 +483,55 @@ export function fetchMonthWeather(
   return p;
 }
 
+/** OWM-версія місячного прогнозу (тільки ~5 днів уперед; решта днів без даних). */
+async function fetchMonthOwm(
+  year: number,
+  month0: number,
+  loc: typeof DEFAULT_LOCATION
+): Promise<Map<number, MonthDayWx>> {
+  const owm = await fetchOwmForecast(loc);
+  const m = new Map<number, MonthDayWx>();
+  if (!owm) return m;
+  // День → елементи (для коду беремо найближчий до 12:00, опади — макс pop).
+  const byDay = new Map<number, { hour: number; code: number; pop: number }[]>();
+  for (const it of owm.list) {
+    const d = owmLocal(it, owm.tz);
+    if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month0) continue;
+    const day = d.getUTCDate();
+    const arr = byDay.get(day) ?? [];
+    arr.push({
+      hour: d.getUTCHours(),
+      code: owmIdToWmo(it.weather?.[0]?.id ?? 800),
+      pop: it.pop ?? 0,
+    });
+    byDay.set(day, arr);
+  }
+  for (const [day, arr] of byDay) {
+    const noon = arr.reduce((a, b) =>
+      Math.abs(b.hour - 12) < Math.abs(a.hour - 12) ? b : a
+    );
+    m.set(day, {
+      code: noon.code,
+      precipProb: Math.round(Math.max(...arr.map((x) => x.pop)) * 100),
+      sunshine: null,
+      daylight: null,
+    });
+  }
+  return m;
+}
+
 /** Хук: погода на місяць для міні-календаря. */
 export function useMonthWeather(
   year: number,
   month0: number,
   loc = DEFAULT_LOCATION
 ) {
+  const [provider] = useWeatherProvider();
   const [map, setMap] = useState<Map<number, MonthDayWx>>(new Map());
-  const key = `${year}-${month0}`;
+  const key = `${provider}|${year}-${month0}`;
   useEffect(() => {
     let alive = true;
-    fetchMonthWeather(year, month0, loc).then((m) => {
+    fetchMonthWeather(year, month0, loc, provider).then((m) => {
       if (alive) setMap(m);
     });
     return () => {
@@ -268,15 +553,26 @@ export function isBadWeather(code: number | null): boolean {
  * сяйва, а опади/туман лишаємо за кодом.
  */
 export function monthDayEmoji(wx: MonthDayWx): string {
-  // Опади/туман/гроза — довіряємо коду.
-  if (wx.code != null && (wx.code >= 45)) return weatherMeta(wx.code).emoji;
-  if (wx.daylight && wx.daylight > 0 && wx.sunshine != null) {
-    const r = wx.sunshine / wx.daylight;
-    if (r >= 0.6) return "☀️";
-    if (r >= 0.3) return "⛅";
-    return "☁️";
+  return weatherMeta(softenDayCode(wx.code, wx.sunshine, wx.daylight)).emoji;
+}
+
+/**
+ * Пом'якшити денний weather_code для сухих днів за часткою сонячного сяйва.
+ * Опади/туман/гроза (code ≥ 45) лишаються; ясні дні отримують 0/2/3 за ratio.
+ */
+export function softenDayCode(
+  code: number | null,
+  sunshine: number | null,
+  daylight: number | null
+): number | null {
+  if (code != null && code >= 45) return code; // опади/туман/гроза — довіряємо
+  if (daylight && daylight > 0 && sunshine != null) {
+    const r = sunshine / daylight;
+    if (r >= 0.6) return 0; // ☀️ ясно
+    if (r >= 0.3) return 2; // ⛅ мінлива хмарність
+    return 3; // ☁️ хмарно
   }
-  return weatherMeta(wx.code ?? null).emoji;
+  return code;
 }
 
 // ── Фази освітлення дня (для фото) ──────────────────────────────────────────
@@ -379,7 +675,8 @@ export function weatherMeta(code: number | null): { emoji: string; label: string
 
 /** Хук: погода обраного дня (з кешем і скасуванням гонок). */
 export function useDayWeather(day: Date, loc = DEFAULT_LOCATION) {
-  const key = dayKey(day);
+  const [provider] = useWeatherProvider();
+  const key = `${provider}|${dayKey(day)}`;
   // Тримаємо результат разом із його ключем — loading похідний (без
   // синхронного setState в ефекті), доки результат не співпаде з поточним днем.
   const [state, setState] = useState<{ key: string; weather: DayWeather | null }>(
@@ -388,13 +685,13 @@ export function useDayWeather(day: Date, loc = DEFAULT_LOCATION) {
 
   useEffect(() => {
     let alive = true;
-    fetchDayWeather(day, loc).then((w) => {
+    fetchDayWeather(day, loc, provider).then((w) => {
       if (alive) setState({ key, weather: w });
     });
     return () => {
       alive = false;
     };
-    // day сериалізуємо через key; loc — стала константа.
+    // day+provider сериалізуємо через key; loc — стала константа.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 

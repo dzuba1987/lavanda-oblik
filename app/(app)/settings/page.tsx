@@ -13,6 +13,7 @@ import {
   BellRing,
   Megaphone,
   HelpCircle,
+  Cloud,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -61,6 +62,12 @@ const BASE_SECTIONS: Section[] = [
     label: "Сповіщення",
     description: "Telegram-бот для замовлень і нових юзерів",
     icon: BellRing,
+  },
+  {
+    href: "/settings/weather/",
+    label: "Погода",
+    description: "Провайдер прогнозу для календаря фотосесій",
+    icon: Cloud,
   },
   {
     href: "/help/",

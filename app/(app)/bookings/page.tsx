@@ -85,6 +85,12 @@ import {
   monthDayEmoji,
   LIGHTING_META,
   DEFAULT_LOCATION,
+  dayKey,
+  fetchDayWeather,
+  owmConfigured,
+  useWeatherProvider,
+  WEATHER_PROVIDER_META,
+  type WeatherProvider,
   type DayWeather,
   type HourWeather,
   type LightingKey,
@@ -383,7 +389,7 @@ function BookingsView() {
             </div>
             <LightingLegend />
           </div>
-          <WeatherCard weather={weather} loading={weatherLoading} />
+          <WeatherCard day={day} weather={weather} loading={weatherLoading} />
         </Card>
 
         <Card className="p-0">
@@ -1383,13 +1389,38 @@ function BestHours({ weather }: { weather: DayWeather | null }) {
 
 // ── Картка погоди (бічна колонка, під легендою) ─────────────────────────────
 function WeatherCard({
+  day,
   weather,
   loading,
 }: {
+  day: Date;
   weather: DayWeather | null;
   loading: boolean;
 }) {
   const meta = weatherMeta(weather?.code ?? null);
+  const [provider, setProvider] = useWeatherProvider();
+  const canCompare = owmConfigured();
+
+  // Прогноз обох провайдерів для порівняння (кеш дедуплікує активний).
+  const [both, setBoth] = useState<{
+    "open-meteo": DayWeather | null;
+    openweathermap: DayWeather | null;
+  }>({ "open-meteo": null, openweathermap: null });
+  useEffect(() => {
+    if (!canCompare) return;
+    let alive = true;
+    Promise.all([
+      fetchDayWeather(day, DEFAULT_LOCATION, "open-meteo"),
+      fetchDayWeather(day, DEFAULT_LOCATION, "openweathermap"),
+    ]).then(([om, owm]) => {
+      if (alive) setBoth({ "open-meteo": om, openweathermap: owm });
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayKey(day), canCompare]);
+
   return (
     <div className="mt-3 space-y-2 border-t pt-3">
       <div className="flex items-center justify-between">
@@ -1398,6 +1429,26 @@ function WeatherCard({
           {DEFAULT_LOCATION.label}
         </span>
       </div>
+
+      {canCompare && (
+        <div className="flex rounded-md border p-0.5 text-[11px]">
+          {(["open-meteo", "openweathermap"] as WeatherProvider[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setProvider(p)}
+              className={cn(
+                "flex-1 rounded px-2 py-1 font-medium transition-colors",
+                provider === p
+                  ? "bg-violet-600 text-white"
+                  : "text-muted-foreground hover:bg-accent"
+              )}
+            >
+              {WEATHER_PROVIDER_META[p].label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <Skeleton className="h-20 w-full" />
@@ -1441,6 +1492,46 @@ function WeatherCard({
               </span>
             </div>
           </div>
+        </div>
+      )}
+
+      {canCompare && (
+        <div className="space-y-1 border-t pt-2">
+          <p className="text-[10px] font-medium text-muted-foreground">
+            Порівняння прогнозу
+          </p>
+          {(["open-meteo", "openweathermap"] as WeatherProvider[]).map((p) => {
+            const w = both[p];
+            const m = weatherMeta(w?.code ?? null);
+            return (
+              <div
+                key={p}
+                className={cn(
+                  "flex items-center gap-2 rounded px-1.5 py-0.5 text-xs",
+                  provider === p && "bg-accent"
+                )}
+              >
+                <span className="w-24 shrink-0 truncate text-[11px] text-muted-foreground">
+                  {WEATHER_PROVIDER_META[p].label}
+                </span>
+                {w?.hasWeather ? (
+                  <>
+                    <span className="text-base leading-none">{m.emoji}</span>
+                    <span className="tabular-nums">
+                      {w.tempMax != null ? fmtTemp(w.tempMax) : "—"}
+                    </span>
+                    {w.precipProb != null && w.precipProb > 0 && (
+                      <span className="ml-auto tabular-nums text-muted-foreground">
+                        💧 {w.precipProb}%
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">немає даних</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
