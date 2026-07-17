@@ -192,10 +192,10 @@ export function EntityCombobox({
             </CommandGroup>
           </CommandList>
           {onCreate && trimmed && !hasExact && (
-            <div className="border-t p-1">
+            <div className="border-t border-violet-200 bg-violet-50 p-1.5 dark:border-violet-900 dark:bg-violet-950/40">
               <button
                 type="button"
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-md bg-violet-600 px-2 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-700 disabled:opacity-50"
                 onClick={handleCreate}
                 onTouchEnd={(e) => {
                   e.preventDefault();

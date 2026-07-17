@@ -138,44 +138,49 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
 
   return (
     <main className="container mx-auto flex flex-1 flex-col gap-4 px-4 py-6">
-      <header className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          {backHref && (
-            <Button asChild variant="ghost" size="icon" className="-ml-2 h-8 w-8">
-              <Link href={backHref} aria-label="Назад">
-                <ChevronLeft className="h-5 w-5" />
-              </Link>
-            </Button>
-          )}
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-2xl font-semibold tracking-tight">
-              {title}
-            </h1>
-            {description && (
-              <p className="truncate text-sm text-muted-foreground">
-                {description}
-              </p>
+      {/* Хедер + пошук — sticky, щоб «Назад»/пошук/«Додати» були доступні при
+          скролі довгого списку (не треба гортати вгору). На мобільному стоїть
+          під топбаром AppShell (sticky top-0 z-30 h-14). */}
+      <div className="sticky top-14 z-20 -mx-4 -mt-6 flex flex-col gap-2 border-b bg-background/95 px-4 pb-3 pt-6 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:top-0">
+        <header className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            {backHref && (
+              <Button asChild variant="ghost" size="icon" className="-ml-2 h-8 w-8 shrink-0">
+                <Link href={backHref} aria-label="Назад">
+                  <ChevronLeft className="h-5 w-5" />
+                </Link>
+              </Button>
             )}
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-2xl font-semibold tracking-tight">
+                {title}
+              </h1>
+              {description && (
+                <p className="truncate text-sm text-muted-foreground">
+                  {description}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={searchPlaceholder}
+              className="pl-9"
+            />
+          </div>
+          <Button onClick={onCreate} className="bg-violet-600 hover:bg-violet-700">
+            <Plus className="mr-1 h-4 w-4" /> Додати
+          </Button>
         </div>
-        <Button onClick={onCreate} className="bg-violet-600 hover:bg-violet-700">
-          <Plus className="mr-1 h-4 w-4" /> Додати
-        </Button>
+
+        {filterControl && <div>{filterControl}</div>}
       </div>
-
-      {filterControl && <div>{filterControl}</div>}
 
       {loading ? (
         <Card>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookText, Loader2, Sparkles, Trash2, Users } from "lucide-react";
+import { BookText, Download, Loader2, Sparkles, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import {
   mergeCustomerDuplicates,
   type DuplicateGroup,
 } from "@/lib/data/dedupeCustomers";
+import { exportDatabase, downloadDump } from "@/lib/data/exportDb";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -21,7 +22,7 @@ export default function DevSettingsPage() {
   const router = useRouter();
   const { authUser, userDoc, loading } = useAuth();
   const [busy, setBusy] = useState<
-    "seed" | "remove" | "dict" | "dupePreview" | "dupeMerge" | null
+    "seed" | "remove" | "dict" | "dupePreview" | "dupeMerge" | "backup" | null
   >(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [dupeGroups, setDupeGroups] = useState<DuplicateGroup[] | null>(null);
@@ -72,6 +73,27 @@ export default function DevSettingsPage() {
     } catch (e) {
       const err = e as { message?: string };
       toast.error(err?.message ?? "Помилка під час оновлення");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleBackup() {
+    setBusy("backup");
+    setLastResult(null);
+    try {
+      const dump = await exportDatabase();
+      downloadDump(dump);
+      const total = Object.values(dump.counts).reduce((a, b) => a + b, 0);
+      const parts = Object.entries(dump.counts)
+        .filter(([, n]) => n > 0)
+        .map(([k, n]) => `${k}: ${n}`)
+        .join(", ");
+      setLastResult(`Дамп завантажено (${total} документів). ${parts}`);
+      toast.success("Дамп завантажено");
+    } catch (e) {
+      const err = e as { message?: string };
+      toast.error(err?.message ?? "Помилка під час експорту");
     } finally {
       setBusy(null);
     }
@@ -180,6 +202,34 @@ export default function DevSettingsPage() {
               <BookText className="mr-2 h-4 w-4" />
             )}
             Завантажити стандартні довідники
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Бекап бази (дамп JSON)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Завантажує повний дамп Firestore одним JSON-файлом: клієнти,
+            замовлення, фотосесії, транзакції, товари, категорії, постачальники,
+            користувачі, налаштування та коментарі замовлень.{" "}
+            <b>Зроби це перед злиттям дублів.</b> Дати зберігаються у
+            відновлюваному форматі.
+          </p>
+
+          <Button
+            onClick={handleBackup}
+            disabled={busy !== null}
+            className="bg-violet-600 hover:bg-violet-700"
+          >
+            {busy === "backup" ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Завантажити дамп
           </Button>
         </CardContent>
       </Card>
