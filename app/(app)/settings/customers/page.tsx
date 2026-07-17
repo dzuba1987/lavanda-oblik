@@ -164,6 +164,7 @@ export default function CustomersPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         initial={editing}
+        existing={items}
         onSaved={reload}
       />
     </>
@@ -174,11 +175,13 @@ function CustomerFormDialog({
   open,
   onOpenChange,
   initial,
+  existing,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial: Row | null;
+  existing: Row[];
   onSaved: () => void;
 }) {
   const [name, setName] = useState("");
@@ -203,6 +206,17 @@ function CustomerFormDialog({
   async function handleSave() {
     if (!name.trim()) {
       toast.error("Введіть ім'я");
+      return;
+    }
+    // Блок дублів: та сама нормалізація, що в import і дедупі
+    // (trim + lower + згортання пробілів). При редагуванні ігноруємо самого себе.
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+    const key = norm(name);
+    const clash = existing.find(
+      (c) => c.id !== initial?.id && norm(c.name) === key
+    );
+    if (clash) {
+      toast.error(`Клієнт «${clash.name}» вже існує`);
       return;
     }
     const parsedAge = age.trim() === "" ? null : Number(age);

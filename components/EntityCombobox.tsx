@@ -55,9 +55,11 @@ export function EntityCombobox({
 
   const selected = items.find((i) => i.id === value) ?? null;
   const trimmed = search.trim();
-  const hasExact = items.some(
-    (i) => i.label.toLowerCase() === trimmed.toLowerCase()
-  );
+  // Нормалізація мусить збігатися з import (lib/excel/runImport.ts) і дедупом
+  // (lib/data/dedupeCustomers.ts): trim + lower + згортання пробілів. Інакше
+  // «Інна  прогулянка» (2 пробіли) вважалась би новою і плодила б дублі.
+  const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  const hasExact = items.some((i) => norm(i.label) === norm(search));
 
   async function handleCreate() {
     if (!onCreate || !trimmed) return;
