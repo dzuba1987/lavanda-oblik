@@ -282,7 +282,7 @@ function CustomerFormDialog({
               autoComplete="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+380 67 123 45 67"
+              placeholder="+380 00 000 00 00"
             />
           </div>
 
