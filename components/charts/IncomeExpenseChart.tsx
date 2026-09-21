@@ -16,7 +16,10 @@ import { formatMoney } from "@/lib/utils/format";
 export function IncomeExpenseChart({ data }: { data: MonthlyBucket[] }) {
   return (
     <div className="h-72 w-full">
-      <ResponsiveContainer>
+      {/* initialDimension: без нього recharts стартує з {-1,-1} і до першого
+          спрацювання ResizeObserver пише в консоль «width(-1) and height(-1)».
+          Значення — приблизні, RO одразу замінює їх на фактичні. */}
+      <ResponsiveContainer initialDimension={{ width: 600, height: 288 }}>
         <BarChart
           data={data}
           margin={{ top: 10, right: 12, left: 0, bottom: 0 }}

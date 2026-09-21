@@ -22,7 +22,10 @@ export function CategoryPieChart({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
       <div className="h-56 w-full sm:w-1/2">
-        <ResponsiveContainer>
+        {/* initialDimension: без нього recharts стартує з {-1,-1} і до першого
+          спрацювання ResizeObserver пише в консоль «width(-1) and height(-1)».
+          Значення — приблизні, RO одразу замінює їх на фактичні. */}
+      <ResponsiveContainer initialDimension={{ width: 600, height: 224 }}>
           <PieChart>
             <Pie
               data={data}
