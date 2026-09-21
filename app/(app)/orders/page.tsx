@@ -171,11 +171,16 @@ export default function OrdersPage() {
   }, []);
 
   // Callback-ref, а не useEffect: перший замір робимо рівно тоді, коли вузол
-  // з'явився, і не тягнемо setState у тіло ефекту.
+  // з'явився, і не тягнемо setState у тіло ефекту. Міряємо синхронно —
+  // requestAnimationFrame у фоновій вкладці не викликається, і тоді підказка
+  // про скрол не з'являлась би взагалі. Другий замір через rAF — на випадок,
+  // коли ширина ще доїжджає після підвантаження шрифту.
   const setTabsRef = useCallback(
     (el: HTMLDivElement | null) => {
       tabsRef.current = el;
-      if (el) requestAnimationFrame(measureTabs);
+      if (!el) return;
+      measureTabs();
+      requestAnimationFrame(measureTabs);
     },
     [measureTabs]
   );
