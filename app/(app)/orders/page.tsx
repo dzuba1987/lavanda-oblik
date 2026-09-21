@@ -165,10 +165,14 @@ export default function OrdersPage() {
     const el = tabsRef.current;
     if (!el) return;
     const max = el.scrollWidth - el.clientWidth;
-    setTabsOverflow({
-      start: el.scrollLeft > 2,
-      end: el.scrollLeft < max - 2,
-    });
+    const start = el.scrollLeft > 2;
+    const end = el.scrollLeft < max - 2;
+    // Повертаємо попередній об'єкт, якщо нічого не змінилось: інакше кожен
+    // виклик — новий об'єкт, новий рендер, і ResizeObserver зациклюється
+    // (React #185, «Maximum update depth exceeded»).
+    setTabsOverflow((prev) =>
+      prev.start === start && prev.end === end ? prev : { start, end }
+    );
   }, []);
 
   // Callback-ref + ResizeObserver, а не useEffect із заміром: на момент, коли
