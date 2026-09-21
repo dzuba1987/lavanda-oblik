@@ -155,6 +155,7 @@ export default function OrdersPage() {
 
   // Скрольована смуга вкладок: чи лишилось що гортати ліворуч/праворуч.
   const tabsRef = useRef<HTMLDivElement | null>(null);
+  const roRef = useRef<ResizeObserver | null>(null);
   const [tabsOverflow, setTabsOverflow] = useState({
     start: false,
     end: false,
@@ -170,25 +171,28 @@ export default function OrdersPage() {
     });
   }, []);
 
-  // Callback-ref, а не useEffect: перший замір робимо рівно тоді, коли вузол
-  // з'явився, і не тягнемо setState у тіло ефекту. Міряємо синхронно —
-  // requestAnimationFrame у фоновій вкладці не викликається, і тоді підказка
-  // про скрол не з'являлась би взагалі. Другий замір через rAF — на випадок,
-  // коли ширина ще доїжджає після підвантаження шрифту.
+  // Callback-ref + ResizeObserver, а не useEffect із заміром: на момент, коли
+  // React віддає вузол, flex ще не обмежив ширину — scrollWidth дорівнює
+  // clientWidth, і разовий замір (хоч синхронний, хоч у rAF) бачить «нема
+  // переповнення». RO спрацьовує після кожної зміни боксу: перша розкладка,
+  // підвантаження шрифту, поворот екрана, зміна набору вкладок.
   const setTabsRef = useCallback(
     (el: HTMLDivElement | null) => {
       tabsRef.current = el;
+      roRef.current?.disconnect();
       if (!el) return;
+      const ro = new ResizeObserver(measureTabs);
+      ro.observe(el);
+      roRef.current = ro;
       measureTabs();
-      requestAnimationFrame(measureTabs);
     },
     [measureTabs]
   );
 
   useEffect(() => {
-    window.addEventListener("resize", measureTabs);
-    return () => window.removeEventListener("resize", measureTabs);
-  }, [measureTabs]);
+    const ro = roRef;
+    return () => ro.current?.disconnect();
+  }, []);
 
   function scrollTabsRight() {
     tabsRef.current?.scrollBy({ left: 160, behavior: "smooth" });
