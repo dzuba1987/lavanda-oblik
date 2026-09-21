@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import {
   formatMoney,
   formatMoneyCompact,
+  formatNumber,
   formatDate,
   formatDateLong,
   tsToDate,
@@ -241,7 +242,7 @@ export default function TransactionsPage() {
   if (!authUser) return null;
 
   return (
-    <main className="container mx-auto flex flex-1 flex-col gap-4 px-4 py-6 pb-24 md:pb-6">
+    <main className="container mx-auto flex flex-1 flex-col gap-4 px-4 py-6">
       <header className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Транзакції</h1>
@@ -479,7 +480,7 @@ function SummaryCard({
     <Card size="sm" className="py-3">
       {/* py-0 — вертикальний відступ дає сам Card (py-3), без подвоєння */}
       <CardContent className="px-2 py-0 md:px-4">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground md:justify-start md:gap-1.5 md:text-xs">
           <span className={colorClass}>{icon}</span>
           {label}
         </div>
@@ -487,7 +488,7 @@ function SummaryCard({
             мобільній картці зменшуємо шрифт/трекінг, щоб сума не обрізалась. */}
         <div
           className={cn(
-            "mt-1 text-sm font-semibold tabular-nums md:text-lg",
+            "mt-1 text-center text-xs font-semibold tabular-nums md:text-left md:text-lg",
             colorClass
           )}
         >
@@ -517,7 +518,7 @@ function TransactionRow({
       <button
         type="button"
         onClick={onEdit}
-        className="flex min-w-0 flex-1 items-start gap-3 text-left"
+        className="flex min-w-0 flex-1 items-start gap-2 text-left md:gap-3"
       >
         <div
           className={cn(
@@ -535,26 +536,34 @@ function TransactionRow({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-medium">
+          <div className="flex items-start gap-1.5 md:items-center">
+            <span className="line-clamp-2 min-w-0 text-sm font-medium md:line-clamp-none md:truncate">
               {t.productName ?? t.categoryName}
             </span>
             {t.orderId && (
               <ShoppingCart
-                className="h-3 w-3 shrink-0 text-violet-600 dark:text-violet-400"
+                className="mt-1 h-3 w-3 shrink-0 text-violet-600 dark:text-violet-400 md:mt-0"
                 aria-label="З замовлення"
               />
             )}
           </div>
-          <div className="truncate text-xs text-muted-foreground">
+          <div className="line-clamp-3 text-xs text-muted-foreground md:line-clamp-none md:truncate">
             {t.productName ? t.categoryName : counterparty ?? "—"}
             {t.productName && counterparty && ` · ${counterparty}`}
             {(t.quantity > 1 || t.unitPrice !== t.totalAmount) && (
-              <> · {t.quantity}×{formatMoney(t.unitPrice)}</>
+              <>
+                {" · "}
+                {t.quantity}×
+                {/* Мобільний — без «грн»: валюта і так очевидна з суми праворуч */}
+                <span className="md:hidden">{formatNumber(t.unitPrice)}</span>
+                <span className="hidden md:inline">
+                  {formatMoney(t.unitPrice)}
+                </span>
+              </>
             )}
           </div>
           {t.note && (
-            <div className="mt-0.5 truncate text-xs text-muted-foreground/80">
+            <div className="mt-0.5 line-clamp-3 text-xs text-muted-foreground/80 md:line-clamp-none md:truncate">
               {t.note}
             </div>
           )}
@@ -569,7 +578,10 @@ function TransactionRow({
           )}
         >
           {isIncome ? "+" : "−"}
-          {formatMoney(t.totalAmount)}
+          {/* Мобільний — без копійок: колонка назви тут ~120px, кожен піксель
+              суми з'їдає назву товару. md+ — повна сума. */}
+          <span className="md:hidden">{formatMoneyCompact(t.totalAmount)}</span>
+          <span className="hidden md:inline">{formatMoney(t.totalAmount)}</span>
         </div>
       </button>
 

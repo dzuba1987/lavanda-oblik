@@ -53,7 +53,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex flex-1 flex-col">
         <MobileHeader />
-        <div className="flex-1 pb-20 md:pb-0">{children}</div>
+        {/* Єдине джерело нижнього відступу для мобільного: нижня навігація (64px)
+            + просвіт під FAB (bottom-20, h-14). Сторінки НЕ додають свій pb. */}
+        <div className="flex-1 pb-28 md:pb-0">{children}</div>
         <BottomNav />
       </div>
     </div>
@@ -216,7 +218,7 @@ function BottomNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px]",
+              "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 text-[10px] tracking-tight",
               active
                 ? "text-violet-600 dark:text-violet-400"
                 : "text-muted-foreground"

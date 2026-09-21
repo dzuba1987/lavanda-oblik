@@ -63,7 +63,13 @@ import {
 import { OrderForm } from "@/components/OrderForm";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { cn } from "@/lib/utils";
-import { formatMoney, formatDate, formatDateMaybeTime, tsToDate } from "@/lib/utils/format";
+import {
+  formatMoney,
+  formatMoneyCompact,
+  formatDate,
+  formatDateMaybeTime,
+  tsToDate,
+} from "@/lib/utils/format";
 import { getPeriodRange, type PeriodPreset, type PeriodRange } from "@/lib/utils/period";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -111,14 +117,6 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
   assembled: "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-200",
   ready: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
-};
-
-const STATUS_BORDER: Record<OrderStatus, string> = {
-  new: "border-l-sky-500",
-  confirmed: "border-l-violet-500",
-  in_progress: "border-l-amber-500",
-  assembled: "border-l-teal-500",
-  ready: "border-l-emerald-500",
 };
 
 const STATUS_ORDER: Record<OrderStatus, number> = {
@@ -392,7 +390,7 @@ export default function OrdersPage() {
   if (!authUser) return null;
 
   return (
-    <main className="container mx-auto flex flex-1 flex-col gap-4 px-4 py-6 pb-24 md:pb-6">
+    <main className="container mx-auto flex flex-1 flex-col gap-4 px-4 py-6">
       <header className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Замовлення</h1>
@@ -725,7 +723,7 @@ function PaymentIcon({ order }: { order: Order }) {
   if (!isOrderPaid(order)) {
     return (
       <span
-        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
+        className="hidden h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 md:inline-flex dark:bg-amber-950/40 dark:text-amber-300"
         title="Не оплачено"
         aria-label="Не оплачено"
       >
@@ -737,7 +735,7 @@ function PaymentIcon({ order }: { order: Order }) {
   return (
     <span
       className={cn(
-        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+        "hidden h-5 w-5 shrink-0 items-center justify-center rounded-full md:inline-flex",
         isCard
           ? "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
           : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
@@ -778,15 +776,18 @@ function PaymentLabelBadge({
           type="button"
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            "hidden shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 transition-colors md:inline-flex",
+            "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium ring-1 transition-colors md:py-0.5",
             paid
               ? "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/50 dark:hover:bg-emerald-950/50"
               : "bg-amber-50 text-amber-700 ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900/50 dark:hover:bg-amber-950/50"
           )}
         >
           <Icon className="h-3 w-3" />
-          {orderPaymentLabel(order)}
-          <ChevronDown className="h-3 w-3 opacity-60" />
+          {/* Мобільний — коротко: спосіб оплати вже показує Icon, а повний
+              підпис ламав рядок бейджів на дві лінії. md+ — повний. */}
+          <span className="md:hidden">{paid ? "Оплачено" : "Не оплачено"}</span>
+          <span className="hidden md:inline">{orderPaymentLabel(order)}</span>
+          <ChevronDown className="hidden h-3 w-3 opacity-60 md:block" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -842,8 +843,10 @@ function OrderCard({
   const photos = order.photos ?? [];
 
   return (
-    <Card className={cn("relative border-l-4", STATUS_BORDER[order.status])}>
-      <CardContent className="px-4 py-2">
+    <Card className="relative py-2 md:py-4">
+      {/* Вертикальний відступ дає сам Card — CardContent на мобільному без py,
+          інакше падінги подвоюються і картка роздувається. */}
+      <CardContent className="px-3 py-0 md:px-4 md:py-2">
         <div className="flex items-center gap-3">
           <div
             role="button"
@@ -857,7 +860,9 @@ function OrderCard({
             }}
             className="flex min-w-0 flex-1 cursor-pointer flex-col items-start gap-0.5 text-left"
           >
-            <div className="flex w-full items-center gap-2">
+            {/* Мобільний: бейджі в перший рядок, назва — окремим рядком на всю
+                ширину (order-last + basis-full), щоб не різалась. md+ — один рядок. */}
+            <div className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 md:flex-nowrap">
               <Badge
                 variant="secondary"
                 className={cn("shrink-0 font-normal", STATUS_COLOR[order.status])}
@@ -865,10 +870,17 @@ function OrderCard({
                 {STATUS_LABEL[order.status]}
               </Badge>
               <PaymentLabelBadge order={order} onSetPayment={onSetPayment} />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+              {/* Мобільний: лічильник решти позицій — у рядок бейджів, щоб
+                  не з'їдати ширину назви. md+ — інлайном у назві, як було. */}
+              {restCount > 0 && (
+                <span className="shrink-0 text-xs text-muted-foreground/70 md:hidden">
+                  +ще {restCount}
+                </span>
+              )}
+              <span className="order-last line-clamp-2 min-w-0 basis-full text-sm font-medium md:order-none md:line-clamp-none md:flex-1 md:basis-auto md:truncate">
                 {firstItem ? firstItem.productName : "(порожнє)"}
                 {restCount > 0 && (
-                  <span className="font-normal text-muted-foreground/70">
+                  <span className="hidden font-normal text-muted-foreground/70 md:inline">
                     {" "}
                     + ще {restCount}
                   </span>
@@ -957,13 +969,19 @@ function OrderCard({
               <PaymentIcon order={order} />
               <span
                 className={cn(
-                  "text-lg font-bold tabular-nums",
+                  "text-base font-bold tabular-nums md:text-lg",
                   isOrderPaid(order)
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-amber-600 dark:text-amber-400"
                 )}
               >
-                {formatMoney(order.totalAmount)}
+                {/* Мобільний — без копійок: сума ділить рядок із назвою товару */}
+                <span className="md:hidden">
+                  {formatMoneyCompact(order.totalAmount)}
+                </span>
+                <span className="hidden md:inline">
+                  {formatMoney(order.totalAmount)}
+                </span>
               </span>
             </div>
           </div>
@@ -1047,7 +1065,7 @@ function OrderCard({
         )}
 
         {createdDate && (
-          <div className="mt-2 flex items-center gap-1 border-t pt-1.5 text-[11px] text-muted-foreground/70">
+          <div className="mt-1.5 flex items-center gap-1 border-t pt-1 text-[11px] text-muted-foreground/70 md:mt-2 md:pt-1.5">
             <Clock3 className="h-3 w-3" />
             Створено {formatDateMaybeTime(createdDate)}
           </div>

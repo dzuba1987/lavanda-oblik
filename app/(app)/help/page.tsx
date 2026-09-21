@@ -27,7 +27,7 @@ const TOC: { href: string; label: string }[] = [
 
 export default function HelpPage() {
   return (
-    <main className="container mx-auto flex flex-1 flex-col gap-6 px-4 py-6 pb-24 md:pb-6">
+    <main className="container mx-auto flex flex-1 flex-col gap-6 px-4 py-6">
       <HelpHashOpener />
 
       <header className="space-y-2">
