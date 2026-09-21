@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/stamp-sw.mjs",
     "start": "next start",
     "preview": "npm run build && npx serve out -p 3001",
     "lint": "eslint",
