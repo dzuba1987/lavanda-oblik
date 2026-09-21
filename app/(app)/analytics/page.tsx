@@ -23,19 +23,44 @@ import { categoriesCrud } from "@/lib/data/categories";
 import {
   monthlyTrend,
   stackedByCategory,
+  windowStart,
+  type TrendWindow,
   seasonalityHeatmap,
   topCounterparties,
 } from "@/lib/analytics";
 import type { Category, Transaction, TransactionType } from "@/lib/data/types";
 
-type WindowMonths = 6 | 12 | 24 | 36;
+/**
+ * Вікна аналітики. Тиждень і місяць рахуємо по днях: у місячних buckets вони
+ * дали б одну-дві точки, і графік динаміки втратив би сенс.
+ */
+const WINDOWS = [
+  { value: "7d", label: "Останній тиждень", window: { unit: "day", count: 7 } },
+  { value: "30d", label: "Останній місяць", window: { unit: "day", count: 30 } },
+  { value: "3m", label: "Останні 3 місяці", window: { unit: "month", count: 3 } },
+  { value: "6m", label: "Останні 6 місяців", window: { unit: "month", count: 6 } },
+  { value: "12m", label: "Останні 12 місяців", window: { unit: "month", count: 12 } },
+  { value: "24m", label: "Останні 24 місяці", window: { unit: "month", count: 24 } },
+  { value: "36m", label: "Останні 3 роки", window: { unit: "month", count: 36 } },
+] as const satisfies ReadonlyArray<{
+  value: string;
+  label: string;
+  window: TrendWindow;
+}>;
+
+type WindowValue = (typeof WINDOWS)[number]["value"];
 
 export default function AnalyticsPage() {
   const [allTx, setAllTx] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [windowMonths, setWindowMonths] = useState<WindowMonths>(12);
+  const [windowValue, setWindowValue] = useState<WindowValue>("12m");
+
+  const activeWindow = useMemo<TrendWindow>(
+    () => WINDOWS.find((w) => w.value === windowValue)!.window,
+    [windowValue]
+  );
   const [stackType, setStackType] = useState<TransactionType>("expense");
 
   const categoryColorById = useMemo(() => {
@@ -71,19 +96,17 @@ export default function AnalyticsPage() {
   }, []);
 
   const windowedTx = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - windowMonths + 1);
-    cutoff.setDate(1);
-    cutoff.setHours(0, 0, 0, 0);
+    // Межу вікна рахує сам analytics-шар, щоб фільтр і buckets не розходились.
+    const cutoff = windowStart(activeWindow);
     return allTx.filter((t) => {
       const d = t.date?.toDate ? t.date.toDate() : null;
       return d && d >= cutoff;
     });
-  }, [allTx, windowMonths]);
+  }, [allTx, activeWindow]);
 
   const trend = useMemo(
-    () => monthlyTrend(windowedTx, windowMonths),
-    [windowedTx, windowMonths]
+    () => monthlyTrend(windowedTx, activeWindow),
+    [windowedTx, activeWindow]
   );
 
   const stacked = useMemo(
@@ -91,10 +114,10 @@ export default function AnalyticsPage() {
       stackedByCategory(
         windowedTx,
         stackType,
-        windowMonths,
+        activeWindow,
         categoryColorById
       ),
-    [windowedTx, stackType, windowMonths, categoryColorById]
+    [windowedTx, stackType, activeWindow, categoryColorById]
   );
 
   const incomeHeatmap = useMemo(
@@ -125,17 +148,18 @@ export default function AnalyticsPage() {
           </p>
         </div>
         <Select
-          value={String(windowMonths)}
-          onValueChange={(v) => setWindowMonths(Number(v) as WindowMonths)}
+          value={windowValue}
+          onValueChange={(v) => setWindowValue(v as WindowValue)}
         >
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="6">Останні 6 місяців</SelectItem>
-            <SelectItem value="12">Останні 12 місяців</SelectItem>
-            <SelectItem value="24">Останні 24 місяці</SelectItem>
-            <SelectItem value="36">Останні 3 роки</SelectItem>
+            {WINDOWS.map((w) => (
+              <SelectItem key={w.value} value={w.value}>
+                {w.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </header>

@@ -65,23 +65,80 @@ function monthLabel(d: Date): string {
   return `${MONTH_SHORT[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
 }
 
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
+function dayLabel(d: Date): string {
+  return `${String(d.getDate()).padStart(2, "0")}.${String(
+    d.getMonth() + 1
+  ).padStart(2, "0")}`;
+}
+
+/**
+ * Вікно аналітики. Місячні buckets годяться від кварталу й далі; для тижня
+ * чи місяця вони дали б одну-дві точки, тому там крок — день.
+ */
+export type TrendWindow = { unit: "month" | "day"; count: number };
+
+function toWindow(w: number | TrendWindow): TrendWindow {
+  return typeof w === "number" ? { unit: "month", count: w } : w;
+}
+
+/** Початок вікна: перше число N-го місяця тому, або опівніч N-го дня тому. */
+export function windowStart(w: number | TrendWindow, now: Date = new Date()): Date {
+  const { unit, count } = toWindow(w);
+  if (unit === "day") {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - count + 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  return new Date(now.getFullYear(), now.getMonth() - count + 1, 1);
+}
+
+/** Порожні buckets вікна — по одному на крок, у хронологічному порядку. */
+function windowSlots(
+  w: number | TrendWindow,
+  now: Date
+): { key: string; label: string }[] {
+  const { unit, count } = toWindow(w);
+  const start = windowStart(w, now);
+  const slots: { key: string; label: string }[] = [];
+  for (let i = 0; i < count; i++) {
+    const d =
+      unit === "day"
+        ? new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
+        : new Date(start.getFullYear(), start.getMonth() + i, 1);
+    slots.push(
+      unit === "day"
+        ? { key: dayKey(d), label: dayLabel(d) }
+        : { key: monthKey(d), label: monthLabel(d) }
+    );
+  }
+  return slots;
+}
+
+function slotKey(d: Date, unit: TrendWindow["unit"]): string {
+  return unit === "day" ? dayKey(d) : monthKey(d);
+}
+
 /**
  * Повертає масив місячних buckets за останні N місяців (включно з поточним),
  * заповнюючи нулями місяці без транзакцій.
  */
 export function monthlyTrend(
   transactions: Transaction[],
-  monthsBack = 12,
+  window: number | TrendWindow = 12,
   now: Date = new Date()
 ): MonthlyBucket[] {
+  const { unit } = toWindow(window);
   const buckets = new Map<string, MonthlyBucket>();
-  const start = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
-  for (let i = 0; i < monthsBack; i++) {
-    const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
-    const key = monthKey(d);
-    buckets.set(key, {
-      key,
-      label: monthLabel(d),
+  for (const slot of windowSlots(window, now)) {
+    buckets.set(slot.key, {
+      key: slot.key,
+      label: slot.label,
       income: 0,
       expense: 0,
       net: 0,
@@ -91,7 +148,7 @@ export function monthlyTrend(
   for (const t of transactions) {
     const d = tsToDate(t.date);
     if (!d) continue;
-    const key = monthKey(d);
+    const key = slotKey(d, unit);
     const b = buckets.get(key);
     if (!b) continue;
     if (t.type === "income") b.income += t.totalAmount;
@@ -232,21 +289,20 @@ export type StackedCategoryMeta = {
 };
 
 /**
- * Дані для stacked-bar чарту: по осі X — місяці, кожна категорія — окрема серія.
+ * Дані для stacked-bar чарту: по осі X — кроки вікна (місяці або дні),
+ * кожна категорія — окрема серія.
  */
 export function stackedByCategory(
   transactions: Transaction[],
   type: TransactionType,
-  monthsBack: number,
+  window: number | TrendWindow,
   categoryColorById: Map<string, string>,
   now: Date = new Date()
 ): { rows: StackedCategoryRow[]; meta: StackedCategoryMeta[] } {
+  const { unit } = toWindow(window);
   const buckets = new Map<string, StackedCategoryRow>();
-  const start = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
-  for (let i = 0; i < monthsBack; i++) {
-    const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
-    const key = monthKey(d);
-    buckets.set(key, { key, label: monthLabel(d) });
+  for (const slot of windowSlots(window, now)) {
+    buckets.set(slot.key, { key: slot.key, label: slot.label });
   }
 
   const seenCategories = new Map<string, StackedCategoryMeta>();
@@ -256,7 +312,7 @@ export function stackedByCategory(
     if (t.type !== type) continue;
     const d = tsToDate(t.date);
     if (!d) continue;
-    const key = monthKey(d);
+    const key = slotKey(d, unit);
     const bucket = buckets.get(key);
     if (!bucket) continue;
     const catId = t.categoryId;
