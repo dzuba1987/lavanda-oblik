@@ -219,7 +219,7 @@ export default function DashboardPage() {
             {loading ? (
               <Skeleton className="h-16 w-full" />
             ) : (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <SessionStat
                   icon={<Clock className="h-4 w-4" />}
                   label="Зарезервовано"
@@ -236,6 +236,7 @@ export default function DashboardPage() {
                   )}`}
                 />
                 <SessionStat
+                  className="col-span-2 md:col-span-1"
                   icon={<CalendarClock className="h-4 w-4" />}
                   label="Найближчий"
                   value={
@@ -377,21 +378,28 @@ function SessionStat({
   label,
   value,
   hint,
+  className,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   hint?: string | null;
+  className?: string;
 }) {
   return (
-    <div className="space-y-0.5">
+    <div className={cn("space-y-0.5", className)}>
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <span className="text-violet-600 dark:text-violet-300">{icon}</span>
         {label}
       </div>
-      <div className="truncate text-base font-semibold md:text-lg">{value}</div>
+      {/* Дата+час фіксованої довжини — різати нема чого, хай переноситься */}
+      <div className="text-base font-semibold md:truncate md:text-lg">
+        {value}
+      </div>
       {hint && (
-        <div className="truncate text-xs text-muted-foreground">{hint}</div>
+        <div className="truncate text-xs text-muted-foreground" title={hint}>
+          {hint}
+        </div>
       )}
     </div>
   );

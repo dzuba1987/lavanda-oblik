@@ -134,15 +134,17 @@ export default function InventoryPage() {
               </div>
             )}
             <div className="min-w-0 space-y-0.5">
-              <div className="flex items-center gap-2 font-medium">
+              <div className="flex items-start gap-2 font-medium md:items-center">
                 {cat && (
                   <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full md:mt-0"
                     style={{ backgroundColor: cat.color }}
                     title={cat.name}
                   />
                 )}
-                <span className="truncate">{it.name}</span>
+                <span className="line-clamp-2 min-w-0 md:line-clamp-none md:truncate">
+                  {it.name}
+                </span>
               </div>
               <div className="text-xs text-muted-foreground md:hidden">
                 <StockText stock={it.stock} unit={it.unit} />

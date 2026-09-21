@@ -753,7 +753,7 @@ function MobileTimeline({
                     <div className="text-sm font-semibold tabular-nums">
                       {hhmm(c!.p.from)}–{hhmm(c!.p.to)}
                     </div>
-                    <div className="truncate text-[11px] text-muted-foreground">
+                    <div className="text-[11px] leading-tight text-muted-foreground">
                       {c!.title}
                     </div>
                   </div>
@@ -904,7 +904,9 @@ function MobileTimeline({
                   {b.type ? ` · ${b.type}` : ""}
                 </div>
                 {b.notes && (
-                  <div className="truncate opacity-70">{b.notes}</div>
+                  <div className="line-clamp-2 opacity-70" title={b.notes}>
+                    {b.notes}
+                  </div>
                 )}
               </div>
             );
@@ -1318,7 +1320,9 @@ function Timeline({
                 {b.type ? ` · ${b.type}` : ""}
               </div>
               {b.notes && (
-                <div className="truncate opacity-70">{b.notes}</div>
+                <div className="line-clamp-2 opacity-70" title={b.notes}>
+                  {b.notes}
+                </div>
               )}
             </div>
           );
@@ -1444,7 +1448,7 @@ function BestHours({ weather }: { weather: DayWeather | null }) {
                 <div className="text-sm font-semibold tabular-nums">
                   {hhmm(p.from)}–{hhmm(p.to)}
                 </div>
-                <div className="truncate text-[11px] text-muted-foreground">
+                <div className="text-[11px] leading-tight text-muted-foreground">
                   {title}
                 </div>
               </div>

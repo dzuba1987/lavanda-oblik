@@ -152,13 +152,11 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
               </Button>
             )}
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-2xl font-semibold tracking-tight">
-                {title}
-              </h1>
+              {/* Заголовок і опис сторінки — статичний текст, не дані змінної
+                  довжини. truncate тут лише ховав зміст, який не дістати. */}
+              <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
               {description && (
-                <p className="truncate text-sm text-muted-foreground">
-                  {description}
-                </p>
+                <p className="text-sm text-muted-foreground">{description}</p>
               )}
             </div>
           </div>

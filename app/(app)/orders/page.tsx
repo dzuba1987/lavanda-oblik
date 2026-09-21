@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Search,
@@ -26,6 +26,7 @@ import {
   CreditCard,
   CircleAlert,
   ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { DELIVERY_LABELS, mapsDirectionsUrl } from "@/lib/utils/delivery";
 import { isOrderPaid, orderPaymentLabel } from "@/lib/utils/payment";
@@ -151,6 +152,42 @@ export default function OrdersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+
+  // Скрольована смуга вкладок: чи лишилось що гортати ліворуч/праворуч.
+  const tabsRef = useRef<HTMLDivElement | null>(null);
+  const [tabsOverflow, setTabsOverflow] = useState({
+    start: false,
+    end: false,
+  });
+
+  const measureTabs = useCallback(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setTabsOverflow({
+      start: el.scrollLeft > 2,
+      end: el.scrollLeft < max - 2,
+    });
+  }, []);
+
+  // Callback-ref, а не useEffect: перший замір робимо рівно тоді, коли вузол
+  // з'явився, і не тягнемо setState у тіло ефекту.
+  const setTabsRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      tabsRef.current = el;
+      if (el) requestAnimationFrame(measureTabs);
+    },
+    [measureTabs]
+  );
+
+  useEffect(() => {
+    window.addEventListener("resize", measureTabs);
+    return () => window.removeEventListener("resize", measureTabs);
+  }, [measureTabs]);
+
+  function scrollTabsRight() {
+    tabsRef.current?.scrollBy({ left: 160, behavior: "smooth" });
+  }
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("status");
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("month");
@@ -421,7 +458,15 @@ export default function OrdersPage() {
         value={statusFilter}
         onValueChange={(v) => setStatusFilter(v as StatusFilter)}
       >
-        <TabsList className="flex w-full justify-start overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[data-slot=tabs-trigger]]:flex-none [&>[data-slot=tabs-trigger]]:px-3">
+        {/* Смуга вкладок ширша за мобільний екран (≈660px у ≈360px). Скрол був
+            і раніше, але край обривався різко й читався як зламана верстка.
+            Фейд + шеврон показують, що є куди гортати, і зникають у кінці. */}
+        <div className="relative min-w-0">
+        <TabsList
+          ref={setTabsRef}
+          onScroll={measureTabs}
+          className="flex w-full justify-start overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[data-slot=tabs-trigger]]:flex-none [&>[data-slot=tabs-trigger]]:px-3"
+        >
           <TabsTrigger value="active">
             Активні<TabCount n={tabCounts.active} />
           </TabsTrigger>
@@ -441,6 +486,30 @@ export default function OrdersPage() {
             Усі<TabCount n={tabCounts.all} />
           </TabsTrigger>
         </TabsList>
+
+        {tabsOverflow.start && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-8 rounded-l-lg bg-gradient-to-r from-muted to-transparent"
+          />
+        )}
+        {tabsOverflow.end && (
+          <>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-lg bg-gradient-to-l from-muted to-transparent"
+            />
+            <button
+              type="button"
+              onClick={scrollTabsRight}
+              aria-label="Показати решту статусів"
+              className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-background text-muted-foreground shadow ring-1 ring-border transition-colors hover:text-foreground"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
+        </div>
       </Tabs>
 
       {/* На мобільному фільтр періоду прихований — статус-вкладки вище вже
