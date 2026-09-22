@@ -104,7 +104,9 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
             }
             return (
               <div className="flex flex-col gap-0.5 text-sm">
-                <span className="truncate">{name ?? "—"}</span>
+                <span className="truncate" title={name ?? undefined}>
+                  {name ?? "—"}
+                </span>
                 <span className="text-xs text-muted-foreground">
                   {formatRelative(ts)}
                 </span>

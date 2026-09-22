@@ -39,6 +39,7 @@ import { EntityCombobox } from "@/components/EntityCombobox";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { TransactionForm } from "@/components/TransactionForm";
 import { cn } from "@/lib/utils";
+import { useHideOnScroll } from "@/hooks/use-hide-on-scroll";
 import {
   formatMoney,
   formatMoneyCompact,
@@ -48,7 +49,6 @@ import {
   tsToDate,
 } from "@/lib/utils/format";
 import { getPeriodRange, type PeriodPreset, type PeriodRange } from "@/lib/utils/period";
-import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useAuth } from "@/lib/auth/AuthContext";
 import {
   listTransactions,
@@ -126,13 +126,14 @@ export default function TransactionsPage() {
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const isMobile = useIsMobile();
-
-  // На мобільному фільтр періоду прихований, тож тягнемо всі транзакції
-  // (фільтрують тип і категорія). На десктопі діє обраний період.
+  // Період діє на всіх ширинах. Раніше на мобільному фільтр був прихований,
+  // а діапазон підмінявся на «весь час» — сторінка тягнула й рендерила всю
+  // історію: 1 689 рядків, 36 550 DOM-вузлів, 132 MB heap, 137 000px
+  // документа. За замовчуванням тепер поточний місяць, «Весь час» лишається
+  // окремою кнопкою для того, кому справді треба все.
   const range = useMemo(
-    () => (isMobile ? { from: null, to: null } : getPeriodRange(periodPreset, customRange)),
-    [isMobile, periodPreset, customRange]
+    () => getPeriodRange(periodPreset, customRange),
+    [periodPreset, customRange]
   );
 
   async function reloadDicts() {
@@ -270,9 +271,9 @@ export default function TransactionsPage() {
       <SummaryCards totals={totals} />
 
       <div className="flex flex-col gap-2">
-        {/* Період — окремий рядок зверху (десктоп). На мобільному прихований:
-            фільтрують тип/категорія, а період займав місце. */}
-        <div className="hidden md:block">
+        {/* Період — окремий рядок зверху. Кнопки самі стискаються під
+            мобільний (h-9, text-xs), тож ховати їх немає потреби. */}
+        <div>
           <PeriodFilter
             preset={periodPreset}
             custom={customRange}
@@ -653,12 +654,18 @@ function FAB({
   onIncome: () => void;
   onExpense: () => void;
 }) {
+  // Їде вниз разом із нижньою навігацією: інакше кнопка стоїть над правим
+  // краєм списку і закриває суму останнього видимого рядка.
+  const hidden = useHideOnScroll();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           size="icon"
-          className="fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full bg-brand shadow-lg hover:bg-brand/90 md:hidden"
+          className={cn(
+            "fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full bg-brand shadow-lg transition-transform duration-300 hover:bg-brand/90 md:hidden",
+            hidden && "translate-y-[calc(100%+6rem)]"
+          )}
           aria-label="Додати"
         >
           <Plus className="h-6 w-6" />

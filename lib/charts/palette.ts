@@ -24,3 +24,61 @@ export const CHART_COLORS = {
 export const LEGEND_LABEL_STYLE: React.CSSProperties = {
   color: "var(--color-foreground)",
 };
+
+/**
+ * Запасні кольори серій — коли кольори категорій у базі збігаються.
+ *
+ * Колір категорії задає користувач, і нічого не заважає поставити той самий
+ * червоний трьом категоріям поспіль. На кругових і stacked-графіках вони
+ * після цього нерозрізнимі: секторів три, колір один.
+ *
+ * Відтінки підібрані так, щоб сусіди відрізнялись і за тоном, і за
+ * світлістю (не лише за відтінком — це важливо при дальтонізмі), і щоб
+ * кожен давав ≥3:1 на білому, як WCAG просить для графіки.
+ */
+const FALLBACK_SERIES = [
+  "#6d28d9",
+  "#047857",
+  "#b45309",
+  "#be123c",
+  "#0369a1",
+  "#0f766e",
+  "#a21caf",
+  "#4d7c0f",
+  "#c2410c",
+  "#4338ca",
+] as const;
+
+/**
+ * Повертає кольори для списку серій, розводячи дублікати.
+ *
+ * Перша серія зі своїм кольором лишає його собі; кожна наступна з уже
+ * зайнятим (або порожнім) кольором отримує наступний вільний із запасних.
+ * Порядок стабільний, тож колір серії не стрибає між перемальовуваннями.
+ */
+export function distinctSeriesColors(
+  colors: readonly (string | undefined)[]
+): string[] {
+  const used = new Set<string>();
+  let next = 0;
+
+  const takeFallback = () => {
+    while (next < FALLBACK_SERIES.length) {
+      const c = FALLBACK_SERIES[next++];
+      if (!used.has(c.toLowerCase())) return c;
+    }
+    // Запасні скінчились — крутимо по колу, це краще за однаковий колір.
+    return FALLBACK_SERIES[next++ % FALLBACK_SERIES.length];
+  };
+
+  return colors.map((raw) => {
+    const c = raw?.trim().toLowerCase();
+    if (!c || used.has(c)) {
+      const picked = takeFallback();
+      used.add(picked.toLowerCase());
+      return picked;
+    }
+    used.add(c);
+    return raw as string;
+  });
+}

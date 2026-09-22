@@ -16,7 +16,7 @@ import type {
   StackedCategoryRow,
 } from "@/lib/analytics";
 import { formatMoney } from "@/lib/utils/format";
-import { LEGEND_LABEL_STYLE } from "@/lib/charts/palette";
+import { LEGEND_LABEL_STYLE, distinctSeriesColors } from "@/lib/charts/palette";
 
 export function StackedCategoryChart({
   rows,
@@ -39,6 +39,10 @@ export function StackedCategoryChart({
   }
 
   const nameById = new Map(meta.map((m) => [m.categoryId, m.name]));
+
+  // Див. CategoryPieChart: кольори категорій у базі можуть збігатись, і тоді
+  // сегменти стовпчика зливаються в один.
+  const seriesColors = distinctSeriesColors(meta.map((m) => m.color));
 
   function toggle(id: string) {
     setHidden((prev) => {
@@ -98,12 +102,12 @@ export function StackedCategoryChart({
               );
             }}
           />
-          {meta.map((m) => (
+          {meta.map((m, i) => (
             <Bar
               key={m.categoryId}
               dataKey={m.categoryId}
               stackId="all"
-              fill={m.color}
+              fill={seriesColors[i]}
               radius={[0, 0, 0, 0]}
               hide={hidden.has(m.categoryId)}
             />

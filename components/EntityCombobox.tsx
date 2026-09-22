@@ -123,7 +123,9 @@ export function EntityCombobox({
                 style={{ backgroundColor: selected.swatch }}
               />
             )}
-            <span className="truncate">{selected?.label ?? placeholder}</span>
+            <span className="truncate" title={selected?.label ?? placeholder}>
+              {selected?.label ?? placeholder}
+            </span>
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -183,7 +185,9 @@ export function EntityCombobox({
                       style={{ backgroundColor: item.swatch }}
                     />
                   )}
-                  <span className="flex-1 truncate">{item.label}</span>
+                  <span className="flex-1 truncate" title={item.label}>
+                    {item.label}
+                  </span>
                   {item.hint && (
                     <span className="ml-2 shrink-0 text-xs text-muted-foreground">
                       {item.hint}

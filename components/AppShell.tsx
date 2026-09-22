@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
+import { useHideOnScroll } from "@/hooks/use-hide-on-scroll";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -182,24 +183,6 @@ function MobileHeader() {
   );
 }
 
-// Ховає нижню навігацію при скролі вниз, показує при скролі вгору.
-function useHideOnScroll() {
-  const [hidden, setHidden] = useState(false);
-  const lastY = useRef(0);
-  useEffect(() => {
-    lastY.current = window.scrollY;
-    const onScroll = () => {
-      const y = window.scrollY;
-      if (y > lastY.current + 6 && y > 80) setHidden(true);
-      else if (y < lastY.current - 6) setHidden(false);
-      lastY.current = y;
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-  return hidden;
-}
-
 function BottomNav() {
   const pathname = usePathname();
   const newOrdersCount = useNewOrdersCount();
@@ -332,7 +315,10 @@ function ProfileMenu({
           </div>
           {!compact && (
             <div className="flex min-w-0 flex-col items-start">
-              <span className="truncate text-sm font-medium">
+              <span
+                className="truncate text-sm font-medium"
+                title={userDoc?.name ?? authUser?.email ?? undefined}
+              >
                 {userDoc?.name ?? authUser?.email}
               </span>
               <span className="text-xs text-muted-foreground">
@@ -344,7 +330,9 @@ function ProfileMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="w-56">
         <DropdownMenuLabel className="flex flex-col">
-          <span className="truncate font-medium">{authUser?.email}</span>
+          <span className="truncate font-medium" title={authUser?.email ?? undefined}>
+            {authUser?.email}
+          </span>
           <Badge
             variant={userDoc?.role === "admin" ? "default" : "secondary"}
             className="mt-1 w-fit"

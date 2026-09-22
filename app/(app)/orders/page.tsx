@@ -64,6 +64,8 @@ import {
 import { OrderForm } from "@/components/OrderForm";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { cn } from "@/lib/utils";
+import { TONE_BADGE, type Tone } from "@/lib/ui/tone";
+import { useHideOnScroll } from "@/hooks/use-hide-on-scroll";
 import {
   formatMoney,
   formatMoneyCompact,
@@ -112,13 +114,18 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   ready: "Виконано",
 };
 
-const STATUS_COLOR: Record<OrderStatus, string> = {
-  new: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200",
-  confirmed: "bg-brand-soft text-brand-text dark:bg-violet-950/40 dark:text-violet-200",
-  in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
-  assembled: "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-200",
-  ready: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
+const STATUS_TONE: Record<OrderStatus, Tone> = {
+  new: "sky",
+  confirmed: "violet",
+  in_progress: "amber",
+  assembled: "teal",
+  ready: "emerald",
 };
+
+// Стилі бейджа беремо з lib/ui/tone — того ж джерела, що й Фотосесії.
+const STATUS_COLOR: Record<OrderStatus, string> = Object.fromEntries(
+  Object.entries(STATUS_TONE).map(([k, tone]) => [k, TONE_BADGE[tone]])
+) as Record<OrderStatus, string>;
 
 const STATUS_ORDER: Record<OrderStatus, number> = {
   new: 0,
@@ -984,7 +991,10 @@ function OrderCard({
               )}
             </div>
 
-            <div className="truncate text-xs text-muted-foreground">
+            <div
+              className="truncate text-xs text-muted-foreground"
+              title={order.customerName ?? undefined}
+            >
               {order.customerName ?? "(без клієнта)"}
             </div>
 
@@ -1335,11 +1345,16 @@ function TabCount({ n }: { n: number }) {
 }
 
 function FAB({ onClick }: { onClick: () => void }) {
+  // Їде вниз разом із нижньою навігацією — див. useHideOnScroll.
+  const hidden = useHideOnScroll();
   return (
     <Button
       onClick={onClick}
       size="icon"
-      className="fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full bg-brand shadow-lg hover:bg-brand/90 md:hidden"
+      className={cn(
+        "fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full bg-brand shadow-lg transition-transform duration-300 hover:bg-brand/90 md:hidden",
+        hidden && "translate-y-[calc(100%+6rem)]"
+      )}
       aria-label="Нове замовлення"
     >
       <Plus className="h-6 w-6" />

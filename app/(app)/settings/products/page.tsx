@@ -30,6 +30,10 @@ type Row = Product;
 
 const NONE_VALUE = "__none";
 
+// Довжина назви: м'яка межа — попередження, жорстка — стоп у полі.
+const NAME_SOFT_LIMIT = 40;
+const NAME_HARD_LIMIT = 80;
+
 export default function ProductsPage() {
   const [items, setItems] = useState<Row[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -221,14 +225,29 @@ function ProductFormDialog({
 
         <div className="space-y-4 py-2">
           <div className="space-y-1">
-            <Label htmlFor="prod-name">Назва</Label>
+            <div className="flex items-baseline justify-between gap-2">
+              <Label htmlFor="prod-name">Назва</Label>
+              {/* М'який лічильник: у базі є записи, де в назву забито речення
+                  на 60–120 символів. Такі не влазять у список за жодних
+                  налаштувань верстки — проблема в даних, не в CSS. */}
+              {name.length > NAME_SOFT_LIMIT && (
+                <span className="text-xs text-amber-700 dark:text-amber-300">
+                  {name.length} символів — у списку буде обрізано
+                </span>
+              )}
+            </div>
             <Input
               id="prod-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ефірна олія 10мл"
+              maxLength={NAME_HARD_LIMIT}
+              aria-describedby="prod-name-hint"
               autoFocus
             />
+            <p id="prod-name-hint" className="text-xs text-muted-foreground">
+              Коротка назва товару. Опис і деталі — в коментарі до замовлення.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

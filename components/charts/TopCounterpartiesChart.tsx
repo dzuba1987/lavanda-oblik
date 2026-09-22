@@ -34,7 +34,7 @@ export function TopCounterpartiesChart({
         return (
           <li key={item.id} className="space-y-1">
             <div className="flex items-baseline justify-between gap-2 text-sm">
-              <span className="min-w-0 flex-1 truncate">
+              <span className="min-w-0 flex-1 truncate" title={item.name}>
                 <span className="mr-2 inline-block w-5 text-xs text-muted-foreground tabular-nums">
                   #{idx + 1}
                 </span>

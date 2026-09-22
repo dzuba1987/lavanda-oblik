@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TONE_BADGE_BORDERED, TONE_DOT } from "@/lib/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -115,23 +116,23 @@ const STATUS_META: Record<
 > = {
   tentative: {
     label: "Попередній",
-    cls: "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800",
-    dot: "bg-amber-500",
+    cls: TONE_BADGE_BORDERED.amber,
+    dot: TONE_DOT.amber,
   },
   confirmed: {
     label: "Підтверджено",
-    cls: "bg-brand-soft text-violet-900 border-violet-300 dark:bg-violet-950/40 dark:text-violet-200 dark:border-violet-800",
-    dot: "bg-violet-500",
+    cls: TONE_BADGE_BORDERED.violet,
+    dot: TONE_DOT.violet,
   },
   done: {
     label: "Завершено",
-    cls: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800",
-    dot: "bg-emerald-500",
+    cls: TONE_BADGE_BORDERED.emerald,
+    dot: TONE_DOT.emerald,
   },
   cancelled: {
     label: "Скасовано",
-    cls: "bg-zinc-100 text-zinc-500 border-zinc-300 line-through dark:bg-zinc-900 dark:text-zinc-500",
-    dot: "bg-zinc-400",
+    cls: `${TONE_BADGE_BORDERED.zinc} line-through`,
+    dot: TONE_DOT.zinc,
   },
 };
 
@@ -894,7 +895,9 @@ function MobileTimeline({
                 )}
               >
                 <div className="flex items-center gap-1">
-                  <span className="truncate font-medium">{b.customerName}</span>
+                  <span className="truncate font-medium" title={b.customerName}>
+                  {b.customerName}
+                </span>
                   {ongoing && <OngoingBadge />}
                   <PaymentBadge b={b} onSetPayment={onSetPayment} />
                 </div>
@@ -1310,7 +1313,9 @@ function Timeline({
               )}
             >
               <div className="flex items-center gap-1">
-                <span className="truncate font-medium">{b.customerName}</span>
+                <span className="truncate font-medium" title={b.customerName}>
+                  {b.customerName}
+                </span>
                 {ongoing && <OngoingBadge />}
                 <PaymentBadge b={b} onSetPayment={onSetPayment} />
               </div>
