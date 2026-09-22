@@ -16,7 +16,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="system"
+      // Світла за замовчуванням, а не системна: застосунок відкривають із
+      // телефонів, де нічна тема часто стоїть за розкладом, і облік раптово
+      // ставав темним посеред дня. «Як у системі» лишається окремим вибором
+      // у меню профілю — enableSystem для цього й потрібен.
+      defaultTheme="light"
       enableSystem
       disableTransitionOnChange
     >
