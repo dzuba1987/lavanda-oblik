@@ -73,7 +73,10 @@ function Sidebar() {
   const newOrdersCount = useNewOrdersCount();
   const upcomingBookings = useUpcomingBookingsCount();
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r bg-card md:flex">
+    // sticky + h-dvh: інакше <aside> розтягується на всю висоту контенту і
+    // футер із профілем та перемикачем теми опиняється за кілька екранів
+    // нижче — на дашборді його не видно взагалі.
+    <aside className="hidden w-60 shrink-0 flex-col border-r bg-card md:sticky md:top-0 md:flex md:h-dvh">
       <div className="flex h-16 items-center gap-2 border-b px-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -86,7 +89,7 @@ function Sidebar() {
         <span className="font-semibold tracking-tight">ЛавандаОблік</span>
       </div>
 
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="thin-scrollbar flex-1 space-y-1 overflow-y-auto p-3">
         {NAV.map((item) => {
           const Icon = item.icon;
           const active = isActive(pathname, item.href);
