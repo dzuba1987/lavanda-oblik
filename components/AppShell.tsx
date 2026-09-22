@@ -137,10 +137,44 @@ function Sidebar() {
         </Link>
       </nav>
 
-      <div className="border-t p-3">
-        <ProfileMenu align="start" />
+      <div className="flex items-center gap-1 border-t p-3">
+        <div className="min-w-0 flex-1">
+          <ProfileMenu align="start" />
+        </div>
+        <ThemeToggle />
       </div>
     </aside>
+  );
+}
+
+/**
+ * Один тап — світла ↔ темна. Повний вибір, включно з «як у системі»,
+ * лишається в меню профілю; ця кнопка для щоденного перемикання.
+ */
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme();
+
+  // До гідратації тема невідома — малюємо нейтральну іконку, щоб розмітка
+  // сервера й клієнта збіглась.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  const isDark = mounted && resolvedTheme === "dark";
+  const label = isDark ? "Увімкнути світлу тему" : "Увімкнути темну тему";
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      aria-label={label}
+      title={label}
+    >
+      {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+    </Button>
   );
 }
 
@@ -176,6 +210,7 @@ function MobileHeader() {
         <span className="font-semibold tracking-tight">ЛавандаОблік</span>
       </div>
       <div className="flex items-center gap-1">
+        <ThemeToggle />
         <HelpButton />
         <ProfileMenu align="end" compact />
       </div>
