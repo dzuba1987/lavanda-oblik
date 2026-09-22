@@ -82,7 +82,7 @@ export default function CustomersPage() {
                 <a
                   href={`tel:${it.phone.replace(/\s/g, "")}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="text-violet-600 hover:underline"
+                  className="text-brand-text hover:underline"
                 >
                   {it.phone}
                 </a>
@@ -101,7 +101,7 @@ export default function CustomersPage() {
           <a
             href={`tel:${it.phone.replace(/\s/g, "")}`}
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 text-sm text-violet-600 hover:underline"
+            className="inline-flex items-center gap-1 text-sm text-brand-text hover:underline"
           >
             <Phone className="h-3 w-3" />
             {it.phone}
@@ -354,7 +354,7 @@ function CustomerFormDialog({
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-violet-600 hover:bg-violet-700"
+            className="bg-brand hover:bg-brand/90"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Зберегти

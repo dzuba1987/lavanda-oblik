@@ -25,7 +25,7 @@ export default function Home() {
   if (loading || authUser) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-text" />
       </main>
     );
   }
@@ -48,7 +48,7 @@ export default function Home() {
           Облік витрат і продажів Лавандового поля — на телефоні та в браузері.
         </p>
         <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button asChild size="lg" className="bg-violet-600 hover:bg-violet-700">
+          <Button asChild size="lg" className="bg-brand hover:bg-brand/90">
             <Link href="/login/">Увійти</Link>
           </Button>
         </div>

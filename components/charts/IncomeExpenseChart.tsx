@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import type { MonthlyBucket } from "@/lib/analytics";
 import { formatMoney } from "@/lib/utils/format";
+import { CHART_COLORS, LEGEND_LABEL_STYLE } from "@/lib/charts/palette";
 
 export function IncomeExpenseChart({ data }: { data: MonthlyBucket[] }) {
   return (
@@ -52,10 +53,14 @@ export function IncomeExpenseChart({ data }: { data: MonthlyBucket[] }) {
           />
           <Legend
             wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-            formatter={(value) => (value === "income" ? "Дохід" : "Витрата")}
+            formatter={(value) => (
+              <span style={LEGEND_LABEL_STYLE}>
+                {value === "income" ? "Дохід" : "Витрата"}
+              </span>
+            )}
           />
-          <Bar dataKey="income" fill="#10b981" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="income" fill={CHART_COLORS.income} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="expense" fill={CHART_COLORS.expense} radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

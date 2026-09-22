@@ -208,7 +208,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Camera className="h-4 w-4 text-violet-600" />
+              <Camera className="h-4 w-4 text-brand-text" />
               Фотосесії
             </CardTitle>
             <Badge variant="secondary" className="font-normal">
@@ -347,7 +347,7 @@ function KpiCard({
   const colorClass = {
     emerald: "text-emerald-700 dark:text-emerald-300",
     red: "text-red-700 dark:text-red-300",
-    violet: "text-violet-700 dark:text-violet-300",
+    violet: "text-brand-text dark:text-violet-300",
   }[color];
 
   return (
@@ -389,7 +389,7 @@ function SessionStat({
   return (
     <div className={cn("space-y-0.5", className)}>
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="text-violet-600 dark:text-violet-300">{icon}</span>
+        <span className="text-brand-text dark:text-violet-300">{icon}</span>
         {label}
       </div>
       {/* Дата+час фіксованої довжини — різати нема чого, хай переноситься */}

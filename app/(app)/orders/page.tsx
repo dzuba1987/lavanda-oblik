@@ -114,7 +114,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
   new: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200",
-  confirmed: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200",
+  confirmed: "bg-brand-soft text-brand-text dark:bg-violet-950/40 dark:text-violet-200",
   in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
   assembled: "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-200",
   ready: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
@@ -458,7 +458,7 @@ export default function OrdersPage() {
           />
           <Button
             onClick={openCreate}
-            className="hidden bg-violet-600 hover:bg-violet-700 md:inline-flex"
+            className="hidden bg-brand hover:bg-brand/90 md:inline-flex"
           >
             <Plus className="mr-1 h-4 w-4" /> Замовлення
           </Button>
@@ -662,7 +662,7 @@ export default function OrdersPage() {
             <Button
               onClick={handleConfirmComplete}
               disabled={completing}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-emerald-700 text-white hover:bg-emerald-800"
             >
               {completing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Завершити
@@ -777,7 +777,7 @@ function KpiCard({
   tone: "violet" | "red" | "muted";
 }) {
   const colorClass = {
-    violet: "text-violet-700 dark:text-violet-300",
+    violet: "text-brand-text dark:text-violet-300",
     red: "text-red-700 dark:text-red-300",
     muted: "text-muted-foreground",
   }[tone];
@@ -805,7 +805,7 @@ function PaymentIcon({ order }: { order: Order }) {
   if (!isOrderPaid(order)) {
     return (
       <span
-        className="hidden h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 md:inline-flex dark:bg-amber-950/40 dark:text-amber-300"
+        className="hidden h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 md:inline-flex dark:bg-amber-950/40 dark:text-amber-300"
         title="Не оплачено"
         aria-label="Не оплачено"
       >
@@ -878,18 +878,18 @@ function PaymentLabelBadge({
       >
         <DropdownMenuLabel className="text-xs">Оплата</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => onSetPayment("paid", "cash")}>
-          <Banknote className="mr-2 h-4 w-4 text-emerald-600" />
+          <Banknote className="mr-2 h-4 w-4 text-emerald-700" />
           Оплачено · готівка
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onSetPayment("paid", "card")}>
-          <CreditCard className="mr-2 h-4 w-4 text-sky-600" />
+          <CreditCard className="mr-2 h-4 w-4 text-sky-700" />
           Оплачено · картка
         </DropdownMenuItem>
         {paid && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onSetPayment("unpaid", null)}>
-              <CircleAlert className="mr-2 h-4 w-4 text-amber-600" />
+              <CircleAlert className="mr-2 h-4 w-4 text-amber-700" />
               Зняти оплату
             </DropdownMenuItem>
           </>
@@ -955,14 +955,14 @@ function OrderCard({
               {/* Мобільний: лічильник решти позицій — у рядок бейджів, щоб
                   не з'їдати ширину назви. md+ — інлайном у назві, як було. */}
               {restCount > 0 && (
-                <span className="shrink-0 text-xs text-muted-foreground/70 md:hidden">
+                <span className="shrink-0 text-xs text-muted-foreground md:hidden">
                   +ще {restCount}
                 </span>
               )}
               <span className="order-last line-clamp-2 min-w-0 basis-full text-sm font-medium md:order-none md:line-clamp-none md:flex-1 md:basis-auto md:truncate">
                 {firstItem ? firstItem.productName : "(порожнє)"}
                 {restCount > 0 && (
-                  <span className="hidden font-normal text-muted-foreground/70 md:inline">
+                  <span className="hidden font-normal text-muted-foreground md:inline">
                     {" "}
                     + ще {restCount}
                   </span>
@@ -975,7 +975,7 @@ function OrderCard({
               )}
               {(order.commentsCount ?? 0) > 0 && (
                 <span
-                  className="flex shrink-0 items-center gap-1 text-xs text-violet-600 dark:text-violet-300"
+                  className="flex shrink-0 items-center gap-1 text-xs text-brand-text dark:text-violet-300"
                   aria-label={`${order.commentsCount} коментарів`}
                 >
                   <MessageSquare className="h-3 w-3" />
@@ -1019,7 +1019,7 @@ function OrderCard({
                   )}
                 </div>
                 {order.delivery.address && (
-                  <div className="line-clamp-1 text-xs text-muted-foreground/80">
+                  <div className="line-clamp-1 text-xs text-muted-foreground">
                     {order.delivery.address}
                   </div>
                 )}
@@ -1027,7 +1027,7 @@ function OrderCard({
             )}
 
             {order.notes && (
-              <div className="line-clamp-1 text-xs text-muted-foreground/80">
+              <div className="line-clamp-1 text-xs text-muted-foreground">
                 {order.notes}
               </div>
             )}
@@ -1039,7 +1039,7 @@ function OrderCard({
                 className={cn(
                   "flex items-center gap-1 text-xs tabular-nums",
                   isOverdue
-                    ? "text-red-600 dark:text-red-400"
+                    ? "text-red-700 dark:text-red-400"
                     : "text-muted-foreground"
                 )}
               >
@@ -1053,8 +1053,8 @@ function OrderCard({
                 className={cn(
                   "text-base font-bold tabular-nums md:text-lg",
                   isOrderPaid(order)
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-amber-600 dark:text-amber-400"
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-amber-700 dark:text-amber-400"
                 )}
               >
                 {/* Мобільний — без копійок: сума ділить рядок із назвою товару */}
@@ -1100,7 +1100,7 @@ function OrderCard({
                 <a
                   href={`tel:${order.phone.replace(/\s/g, "")}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-brand-soft px-2 py-1 text-xs font-medium text-brand-text transition-colors hover:bg-brand-soft dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
                   aria-label={`Подзвонити ${order.phone}`}
                 >
                   <Phone className="h-3 w-3" />
@@ -1147,7 +1147,7 @@ function OrderCard({
         )}
 
         {createdDate && (
-          <div className="mt-1.5 flex items-center gap-1 border-t pt-1 text-[11px] text-muted-foreground/70 md:mt-2 md:pt-1.5">
+          <div className="mt-1.5 flex items-center gap-1 border-t pt-1 text-[11px] text-muted-foreground md:mt-2 md:pt-1.5">
             <Clock3 className="h-3 w-3" />
             Створено {formatDateMaybeTime(createdDate)}
           </div>
@@ -1182,30 +1182,30 @@ function StatusActions({
     Icon: typeof PackageOpen;
     color: string;
   }[] = [
-    { s: "new", label: "Нове", Icon: PackageOpen, color: "text-sky-600" },
+    { s: "new", label: "Нове", Icon: PackageOpen, color: "text-sky-700" },
     {
       s: "confirmed",
       label: "Підтверджено",
       Icon: CheckCircle2,
-      color: "text-violet-600",
+      color: "text-brand-text",
     },
     {
       s: "in_progress",
       label: "В роботі",
       Icon: Clock3,
-      color: "text-amber-600",
+      color: "text-amber-700",
     },
     {
       s: "assembled",
       label: "Готове до видачі",
       Icon: Package,
-      color: "text-teal-600",
+      color: "text-teal-700",
     },
     {
       s: "ready",
       label: hasTransactions ? "Виконано" : "Виконано → транзакція",
       Icon: PackageCheck,
-      color: "text-emerald-600",
+      color: "text-emerald-700",
     },
   ];
 
@@ -1265,31 +1265,31 @@ function StatusActions({
         </DropdownMenuLabel>
         {order.status !== "new" && (
           <DropdownMenuItem onClick={() => onStatusChange("new")}>
-            <PackageOpen className="mr-2 h-4 w-4 text-sky-600" />
+            <PackageOpen className="mr-2 h-4 w-4 text-sky-700" />
             Нове
           </DropdownMenuItem>
         )}
         {order.status !== "confirmed" && (
           <DropdownMenuItem onClick={() => onStatusChange("confirmed")}>
-            <CheckCircle2 className="mr-2 h-4 w-4 text-violet-600" />
+            <CheckCircle2 className="mr-2 h-4 w-4 text-brand-text" />
             Підтверджено
           </DropdownMenuItem>
         )}
         {order.status !== "in_progress" && (
           <DropdownMenuItem onClick={() => onStatusChange("in_progress")}>
-            <Clock3 className="mr-2 h-4 w-4 text-amber-600" />
+            <Clock3 className="mr-2 h-4 w-4 text-amber-700" />
             В роботі
           </DropdownMenuItem>
         )}
         {order.status !== "assembled" && (
           <DropdownMenuItem onClick={() => onStatusChange("assembled")}>
-            <Package className="mr-2 h-4 w-4 text-teal-600" />
+            <Package className="mr-2 h-4 w-4 text-teal-700" />
             Готове до видачі
           </DropdownMenuItem>
         )}
         {order.status !== "ready" && (
           <DropdownMenuItem onClick={() => onStatusChange("ready")}>
-            <PackageCheck className="mr-2 h-4 w-4 text-emerald-600" />
+            <PackageCheck className="mr-2 h-4 w-4 text-emerald-700" />
             {hasTransactions ? "Виконано" : "Виконано → транзакція"}
           </DropdownMenuItem>
         )}
@@ -1298,16 +1298,16 @@ function StatusActions({
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs">Оплата</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => onSetPayment("paid", "cash")}>
-              <Banknote className="mr-2 h-4 w-4 text-emerald-600" />
+              <Banknote className="mr-2 h-4 w-4 text-emerald-700" />
               Оплачено · готівка
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSetPayment("paid", "card")}>
-              <CreditCard className="mr-2 h-4 w-4 text-sky-600" />
+              <CreditCard className="mr-2 h-4 w-4 text-sky-700" />
               Оплачено · картка
             </DropdownMenuItem>
             {paid && (
               <DropdownMenuItem onClick={() => onSetPayment("unpaid", null)}>
-                <CircleAlert className="mr-2 h-4 w-4 text-amber-600" />
+                <CircleAlert className="mr-2 h-4 w-4 text-amber-700" />
                 Зняти оплату
               </DropdownMenuItem>
             )}
@@ -1328,7 +1328,7 @@ function StatusActions({
 function TabCount({ n }: { n: number }) {
   if (n === 0) return null;
   return (
-    <span className="ml-1.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-violet-600 px-1.5 text-[11px] font-semibold tabular-nums text-white shadow-sm dark:bg-violet-500">
+    <span className="ml-1.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-semibold tabular-nums text-brand-fg shadow-sm">
       {n}
     </span>
   );
@@ -1339,7 +1339,7 @@ function FAB({ onClick }: { onClick: () => void }) {
     <Button
       onClick={onClick}
       size="icon"
-      className="fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full bg-violet-600 shadow-lg hover:bg-violet-700 md:hidden"
+      className="fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full bg-brand shadow-lg hover:bg-brand/90 md:hidden"
       aria-label="Нове замовлення"
     >
       <Plus className="h-6 w-6" />
@@ -1374,7 +1374,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
             чи корпоративного клієнта.
           </p>
         </div>
-        <Button onClick={onCreate} className="bg-violet-600 hover:bg-violet-700">
+        <Button onClick={onCreate} className="bg-brand hover:bg-brand/90">
           <Plus className="mr-1 h-4 w-4" />
           Нове замовлення
         </Button>

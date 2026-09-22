@@ -7,6 +7,13 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-text: var(--brand-text);
+  --color-brand-soft: var(--brand-soft);
+  --color-income: var(--income);
+  --color-expense: var(--expense);
+  --color-net: var(--net);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-geist-sans);
@@ -49,6 +56,23 @@
 }
 
 :root {
+  /* ── Бренд ────────────────────────────────────────────────────────────
+     Був розсіяний по коду двома різними фіолетовими: #7f22fe (кнопки, FAB)
+     і #7c5cbb (спінер, скролбар, лінія «Чистий»). Тепер один колір у
+     чотирьох ролях. Контраст на білому: brand 5.89:1, brand-text 7.10:1. */
+  --brand: #7f22fe;
+  --brand-fg: #ffffff;
+  --brand-text: #6d28d9;
+  --brand-soft: #ede9fe;
+
+  /* ── Кольори сум і серій графіків ─────────────────────────────────────
+     Відтінки -700: однаково придатні і як заливка під білим текстом, і як
+     текст на білому (5.48 / 6.47 / 7.10). Попередні -500/-600 давали
+     2.54–3.76 і не проходили ні для тексту, ні навіть для ліній. */
+  --income: #047857;
+  --expense: #b91c1c;
+  --net: #6d28d9;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -68,12 +92,14 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Був сірий oklch(0.708) → на білому 1.54:1, а WCAG для індикатора
+     фокуса просить 3:1. Бренд дає 5.89:1. */
+  --ring: var(--brand);
+  --chart-1: var(--income);
+  --chart-2: var(--expense);
+  --chart-3: var(--net);
+  --chart-4: #b45309;
+  --chart-5: #0f766e;
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -86,6 +112,14 @@
 }
 
 .dark {
+  --brand: #a78bfa;
+  --brand-fg: #1e1b2e;
+  --brand-text: #c4b5fd;
+  --brand-soft: #2e1065;
+  --income: #34d399;
+  --expense: #f87171;
+  --net: #c4b5fd;
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -103,12 +137,12 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --ring: var(--brand);
+  --chart-1: var(--income);
+  --chart-2: var(--expense);
+  --chart-3: var(--net);
+  --chart-4: #fbbf24;
+  --chart-5: #2dd4bf;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -136,7 +170,7 @@
    `-webkit-appearance`, без якого Chromium на macOS не перемикається з
    overlay (autohide) у classic mode і scrollbar лишається невидимим. */
 .thin-scrollbar {
-  scrollbar-color: rgba(124, 92, 187, 0.55) rgba(0, 0, 0, 0.04);
+  scrollbar-color: color-mix(in oklab, var(--brand) 55%, transparent) rgba(0, 0, 0, 0.04);
   scrollbar-gutter: stable;
 }
 .thin-scrollbar::-webkit-scrollbar {
@@ -149,12 +183,12 @@
   border-radius: 4px;
 }
 .thin-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(124, 92, 187, 0.55);
+  background: color-mix(in oklab, var(--brand) 55%, transparent);
   border-radius: 4px;
   min-height: 30px;
 }
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 92, 187, 0.75);
+  background: color-mix(in oklab, var(--brand) 75%, transparent);
 }
 
 /*
@@ -179,8 +213,8 @@ body:not(.app-ready)::after {
   width: 36px;
   height: 36px;
   margin: -18px 0 0 -18px;
-  border: 3px solid rgba(124, 92, 187, 0.2);
-  border-top-color: #7c5cbb;
+  border: 3px solid color-mix(in oklab, var(--brand) 20%, transparent);
+  border-top-color: var(--brand, #7f22fe);
   border-radius: 50%;
   animation: app-boot-spin 0.8s linear infinite;
   z-index: 10000;

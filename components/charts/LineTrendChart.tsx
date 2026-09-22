@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import type { MonthlyBucket } from "@/lib/analytics";
 import { formatMoney } from "@/lib/utils/format";
+import { CHART_COLORS, LEGEND_LABEL_STYLE } from "@/lib/charts/palette";
 
 export function LineTrendChart({ data }: { data: MonthlyBucket[] }) {
   return (
@@ -51,18 +52,20 @@ export function LineTrendChart({ data }: { data: MonthlyBucket[] }) {
           />
           <Legend
             wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-            formatter={(value) =>
-              value === "income"
-                ? "Дохід"
-                : value === "expense"
-                  ? "Витрата"
-                  : "Чистий"
-            }
+            formatter={(value) => (
+              <span style={LEGEND_LABEL_STYLE}>
+                {value === "income"
+                  ? "Дохід"
+                  : value === "expense"
+                    ? "Витрата"
+                    : "Чистий"}
+              </span>
+            )}
           />
           <Line
             type="monotone"
             dataKey="income"
-            stroke="#10b981"
+            stroke={CHART_COLORS.income}
             strokeWidth={2}
             dot={{ r: 3 }}
             activeDot={{ r: 5 }}
@@ -70,7 +73,7 @@ export function LineTrendChart({ data }: { data: MonthlyBucket[] }) {
           <Line
             type="monotone"
             dataKey="expense"
-            stroke="#ef4444"
+            stroke={CHART_COLORS.expense}
             strokeWidth={2}
             dot={{ r: 3 }}
             activeDot={{ r: 5 }}
@@ -78,7 +81,7 @@ export function LineTrendChart({ data }: { data: MonthlyBucket[] }) {
           <Line
             type="monotone"
             dataKey="net"
-            stroke="#7c5cbb"
+            stroke={CHART_COLORS.net}
             strokeWidth={2}
             strokeDasharray="4 4"
             dot={{ r: 2 }}

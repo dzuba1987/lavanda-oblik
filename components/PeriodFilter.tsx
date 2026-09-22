@@ -59,7 +59,7 @@ export function PeriodFilter({ preset, custom, onChange }: PeriodFilterProps) {
           variant={preset === q.value ? "default" : "outline"}
           className={cn(
             "h-9 px-1.5 text-xs md:px-3 md:text-sm",
-            preset === q.value && "bg-violet-600 hover:bg-violet-700"
+            preset === q.value && "bg-brand hover:bg-brand/90"
           )}
           onClick={() => onChange(q.value, custom)}
         >
@@ -75,7 +75,7 @@ export function PeriodFilter({ preset, custom, onChange }: PeriodFilterProps) {
             variant={preset === "custom" ? "default" : "outline"}
             className={cn(
               "h-9 gap-1 px-1.5 text-xs md:gap-1.5 md:px-3 md:text-sm",
-              preset === "custom" && "bg-violet-600 hover:bg-violet-700"
+              preset === "custom" && "bg-brand hover:bg-brand/90"
             )}
           >
             <CalendarDays className="h-3.5 w-3.5" />
@@ -104,7 +104,7 @@ export function PeriodFilter({ preset, custom, onChange }: PeriodFilterProps) {
           <Button
             onClick={handleApplyCustom}
             size="sm"
-            className="w-full bg-violet-600 hover:bg-violet-700"
+            className="w-full bg-brand hover:bg-brand/90"
           >
             Застосувати
           </Button>

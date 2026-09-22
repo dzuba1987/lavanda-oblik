@@ -120,7 +120,7 @@ export default function ChangelogBroadcastPage() {
   if (loading) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-text" />
       </main>
     );
   }
@@ -130,7 +130,7 @@ export default function ChangelogBroadcastPage() {
       <main className="container mx-auto flex flex-1 flex-col gap-6 px-4 py-6">
         <Card>
           <CardContent className="flex items-center gap-3 px-4 py-8 text-sm text-muted-foreground">
-            <ShieldAlert className="h-5 w-5 shrink-0 text-amber-600" />
+            <ShieldAlert className="h-5 w-5 shrink-0 text-amber-700" />
             Розділ доступний лише адміністраторам.
           </CardContent>
         </Card>
@@ -154,7 +154,7 @@ export default function ChangelogBroadcastPage() {
       <Card>
         <CardContent className="space-y-4 px-4 py-4">
           <div className="flex items-center gap-2">
-            <Megaphone className="h-4 w-4 text-violet-600" />
+            <Megaphone className="h-4 w-4 text-brand-text" />
             <h2 className="text-base font-medium">Текст повідомлення</h2>
           </div>
 
@@ -196,7 +196,7 @@ export default function ChangelogBroadcastPage() {
             <Button
               onClick={handleSendAll}
               disabled={sending || testing || !count}
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-brand hover:bg-brand/90"
             >
               {sending ? (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />

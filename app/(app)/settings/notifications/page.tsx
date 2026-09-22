@@ -159,7 +159,7 @@ export default function NotificationsSettingsPage() {
   if (loading) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-text" />
       </main>
     );
   }
@@ -181,7 +181,7 @@ export default function NotificationsSettingsPage() {
       <Card>
         <CardContent className="space-y-4 px-4 py-4">
           <div className="flex items-center gap-2">
-            <BellRing className="h-4 w-4 text-violet-600" />
+            <BellRing className="h-4 w-4 text-brand-text" />
             <h2 className="text-base font-medium">Telegram-бот @{BOT_NAME}</h2>
           </div>
 
@@ -262,7 +262,7 @@ export default function NotificationsSettingsPage() {
                       href={`https://t.me/${BOT_NAME}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-violet-600 underline"
+                      className="text-brand-text underline"
                     >
                       @{BOT_NAME}
                     </a>{" "}

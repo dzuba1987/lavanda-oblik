@@ -126,7 +126,7 @@ export default function SettingsPage() {
                 href={s.href}
                 className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-200">
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-soft text-brand-text dark:bg-violet-950/50 dark:text-violet-200">
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">

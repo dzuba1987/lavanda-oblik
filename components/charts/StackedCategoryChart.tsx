@@ -16,6 +16,7 @@ import type {
   StackedCategoryRow,
 } from "@/lib/analytics";
 import { formatMoney } from "@/lib/utils/format";
+import { LEGEND_LABEL_STYLE } from "@/lib/charts/palette";
 
 export function StackedCategoryChart({
   rows,
@@ -86,6 +87,7 @@ export function StackedCategoryChart({
               return (
                 <span
                   style={{
+                    ...LEGEND_LABEL_STYLE,
                     cursor: "pointer",
                     opacity: isHidden ? 0.4 : 1,
                     textDecoration: isHidden ? "line-through" : undefined,

@@ -711,8 +711,8 @@ export function OrderForm({
 
         <div className="thin-scrollbar -mx-6 flex-1 space-y-4 overflow-y-auto px-6 py-2">
           {aiDraft && !initial && (
-            <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-xs dark:border-violet-900/40 dark:bg-violet-950/30">
-              <div className="mb-1 flex items-center gap-1.5 font-medium text-violet-700 dark:text-violet-300">
+            <div className="rounded-md border border-violet-200 bg-brand-soft p-3 text-xs dark:border-violet-900/40 dark:bg-violet-950/30">
+              <div className="mb-1 flex items-center gap-1.5 font-medium text-brand-text dark:text-violet-300">
                 🎙 Голосовий ввід
               </div>
               <div className="italic text-violet-900/80 dark:text-violet-200/80">
@@ -720,7 +720,7 @@ export function OrderForm({
               </div>
               {aiDraft.customerCandidates.length > 0 && !customerId && (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="text-violet-700 dark:text-violet-300">
+                  <span className="text-brand-text dark:text-violet-300">
                     Клієнт «{aiDraft.customerName}»:
                   </span>
                   {aiDraft.customerCandidates.map((c) => (
@@ -732,7 +732,7 @@ export function OrderForm({
                         const cust = allCustomers.find((x) => x.id === c.id);
                         if (cust?.phone) setPhone(cust.phone);
                       }}
-                      className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-200 transition-colors hover:bg-violet-100 dark:bg-violet-900/50 dark:text-violet-200 dark:ring-violet-800"
+                      className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-brand-text ring-1 ring-violet-200 transition-colors hover:bg-brand-soft dark:bg-violet-900/50 dark:text-violet-200 dark:ring-violet-800"
                     >
                       {c.name}
                     </button>
@@ -812,7 +812,7 @@ export function OrderForm({
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <Label>Позиції</Label>
-              <span className="inline-flex items-baseline gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-sm text-violet-700 dark:bg-violet-950/40 dark:text-violet-200">
+              <span className="inline-flex items-baseline gap-1.5 rounded-md bg-brand-soft px-2.5 py-1 text-sm text-brand-text dark:bg-violet-950/40 dark:text-violet-200">
                 <span className="text-xs opacity-80">Усього:</span>
                 <span className="text-base font-bold tabular-nums">{formatMoney(total)}</span>
               </span>
@@ -982,7 +982,7 @@ export function OrderForm({
                       href={mapUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-violet-600 hover:underline dark:text-violet-400"
+                      className="inline-flex items-center gap-1 text-xs text-brand-text hover:underline dark:text-violet-400"
                     >
                       <Navigation className="h-3 w-3" />
                       Відкрити маршрут у картах
@@ -1168,7 +1168,7 @@ export function OrderForm({
                 <button
                   type="button"
                   onClick={() => photoInputRef.current?.click()}
-                  className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed text-muted-foreground transition-colors hover:border-violet-500 hover:text-violet-600"
+                  className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed text-muted-foreground transition-colors hover:border-violet-500 hover:text-brand-text"
                 >
                   <Camera className="h-5 w-5" />
                   <span className="text-xs">Додати</span>
@@ -1204,7 +1204,7 @@ export function OrderForm({
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-violet-600 hover:bg-violet-700"
+            className="bg-brand hover:bg-brand/90"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {initial ? "Зберегти" : "Створити"}

@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/auth/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import { PWARegister } from "@/components/PWARegister";
 import { BootLoader } from "@/components/BootLoader";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#7c5cbb",
+  themeColor: "#7f22fe",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -58,6 +59,9 @@ export default function RootLayout({
   return (
     <html
       lang="uk"
+      // next-themes ставить клас теми на <html> ще до гідратації —
+      // без цього React скаржиться на розбіжність розмітки.
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
@@ -71,10 +75,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <BootLoader />
-        <AuthProvider>{children}</AuthProvider>
-        <Toaster richColors position="top-center" />
-        <PWARegister />
+        <ThemeProvider>
+          <BootLoader />
+          <AuthProvider>{children}</AuthProvider>
+          <Toaster richColors position="top-center" />
+          <PWARegister />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -159,7 +159,7 @@ export default function LoginPage() {
                 autoComplete="current-password"
               />
               <Button
-                className="w-full bg-violet-600 hover:bg-violet-700"
+                className="w-full bg-brand hover:bg-brand/90"
                 onClick={handleSignIn}
                 disabled={busy}
               >
@@ -198,7 +198,7 @@ export default function LoginPage() {
                 onRefresh={refreshCaptcha}
               />
               <Button
-                className="w-full bg-violet-600 hover:bg-violet-700"
+                className="w-full bg-brand hover:bg-brand/90"
                 onClick={handleSignUp}
                 disabled={busy}
               >

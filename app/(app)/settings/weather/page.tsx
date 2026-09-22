@@ -112,7 +112,7 @@ export default function WeatherSettingsPage() {
       <Card>
         <CardContent className="space-y-3 px-4 py-4">
           <div className="flex items-center gap-2">
-            <Cloud className="h-4 w-4 text-violet-600" />
+            <Cloud className="h-4 w-4 text-brand-text" />
             <h2 className="text-base font-medium">Джерело прогнозу</h2>
           </div>
 
@@ -130,7 +130,7 @@ export default function WeatherSettingsPage() {
                   className={cn(
                     "flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors",
                     active
-                      ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30"
+                      ? "border-violet-500 bg-brand-soft dark:bg-violet-950/30"
                       : "hover:bg-accent",
                     disabled && "cursor-not-allowed opacity-50"
                   )}
@@ -139,7 +139,7 @@ export default function WeatherSettingsPage() {
                     className={cn(
                       "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
                       active
-                        ? "border-violet-600 bg-violet-600 text-white"
+                        ? "border-violet-600 bg-brand text-brand-fg"
                         : "border-muted-foreground/40"
                     )}
                   >
@@ -153,7 +153,7 @@ export default function WeatherSettingsPage() {
                       {info.desc}
                     </div>
                     {disabled && info.hint && (
-                      <div className="mt-1 text-xs text-amber-600">
+                      <div className="mt-1 text-xs text-amber-700">
                         {info.hint}
                       </div>
                     )}
@@ -196,7 +196,7 @@ export default function WeatherSettingsPage() {
                     className={cn(
                       "rounded px-1.5 py-0.5",
                       provider === p &&
-                        "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-200"
+                        "bg-brand-soft text-brand-text dark:bg-violet-950/50 dark:text-violet-200"
                     )}
                   >
                     {WEATHER_PROVIDER_META[p].label}
@@ -273,7 +273,7 @@ export default function WeatherSettingsPage() {
                   <span className="flex items-center gap-1.5 truncate font-medium">
                     {WEATHER_PROVIDER_META[s.provider].label}
                     {isBest && (
-                      <span className="rounded bg-emerald-600 px-1 text-[10px] text-white">
+                      <span className="rounded bg-emerald-700 px-1 text-[10px] text-white">
                         точніший
                       </span>
                     )}
@@ -326,7 +326,7 @@ function ProviderCell({
     <div
       className={cn(
         "flex flex-1 items-center gap-1.5",
-        highlight && "font-medium text-amber-600 dark:text-amber-400"
+        highlight && "font-medium text-amber-700 dark:text-amber-400"
       )}
     >
       <span className="text-lg leading-none">{m.emoji}</span>

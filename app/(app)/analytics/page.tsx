@@ -258,7 +258,7 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-4 w-4 text-emerald-600" />
+              <Users className="h-4 w-4 text-emerald-700" />
               Топ клієнти
             </CardTitle>
             <Badge variant="secondary" className="font-normal">
@@ -281,7 +281,7 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Truck className="h-4 w-4 text-red-600" />
+              <Truck className="h-4 w-4 text-red-700" />
               Топ постачальники
             </CardTitle>
             <Badge variant="secondary" className="font-normal">

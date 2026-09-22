@@ -172,7 +172,7 @@ export function CrudPage<T extends { id: string }>(props: CrudPageProps<T>) {
               className="pl-9"
             />
           </div>
-          <Button onClick={onCreate} className="bg-violet-600 hover:bg-violet-700">
+          <Button onClick={onCreate} className="bg-brand hover:bg-brand/90">
             <Plus className="mr-1 h-4 w-4" /> Додати
           </Button>
         </div>

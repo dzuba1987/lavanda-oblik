@@ -112,7 +112,7 @@ export function ImportWizard() {
       {phase === "parsing" && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-brand-text" />
             <p className="text-sm text-muted-foreground">
               Парсимо аркуші…
             </p>
@@ -131,7 +131,7 @@ export function ImportWizard() {
       {phase === "importing" && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-brand-text" />
             <div className="text-center text-sm">
               <div className="font-medium">
                 {progress?.message ?? "Імпортуємо…"}
@@ -185,7 +185,7 @@ export function ImportWizard() {
             </Button>
             <Button
               onClick={handleConfirmImport}
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-brand hover:bg-brand/90"
             >
               Імпортувати
             </Button>
@@ -201,9 +201,9 @@ function DropZone({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card px-6 py-12 text-center transition-colors hover:border-violet-400 hover:bg-violet-50/40 dark:hover:bg-violet-950/20"
+      className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card px-6 py-12 text-center transition-colors hover:border-violet-400 hover:bg-brand-soft/40 dark:hover:bg-violet-950/20"
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-soft text-brand-text dark:bg-violet-950/40 dark:text-violet-300">
         <Upload className="h-7 w-7" />
       </div>
       <div>
@@ -236,7 +236,7 @@ function Preview({
       {result.unknownSheets.length > 0 && (
         <Card>
           <CardContent className="flex items-start gap-3 py-3 text-sm">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
             <div>
               <div className="font-medium">Нерозпізнані аркуші</div>
               <div className="text-muted-foreground">
@@ -281,7 +281,7 @@ function Preview({
         <Button
           onClick={onConfirm}
           disabled={result.totalRows === 0}
-          className="flex-1 bg-violet-600 hover:bg-violet-700"
+          className="flex-1 bg-brand hover:bg-brand/90"
         >
           Імпортувати {result.totalRows}{" "}
           {pluralize(result.totalRows, "запис", "записи", "записів")}
@@ -313,7 +313,7 @@ function SummaryRow({ result }: { result: WorkbookParseResult }) {
             className={cn(
               "text-lg font-semibold",
               result.totalSkipped > 0
-                ? "text-amber-600 dark:text-amber-400"
+                ? "text-amber-700 dark:text-amber-400"
                 : ""
             )}
           >
@@ -335,7 +335,7 @@ function SheetPreview({ sheet }: { sheet: SheetParseResult }) {
         <Card>
           <CardContent className="space-y-1 py-3 text-sm">
             <div className="flex items-center gap-2 font-medium">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertTriangle className="h-4 w-4 text-amber-700" />
               Пропущено {sheet.skipped.length} рядків
             </div>
             <ul className="max-h-32 overflow-y-auto pl-6 text-xs text-muted-foreground">
@@ -356,7 +356,7 @@ function SheetPreview({ sheet }: { sheet: SheetParseResult }) {
         <Card>
           <CardContent className="py-3 text-sm">
             <div className="flex items-center gap-2 font-medium">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertTriangle className="h-4 w-4 text-amber-700" />
               {warnings.length}{" "}
               {pluralize(warnings.length, "запис", "записи", "записів")} з
               попередженнями
@@ -429,7 +429,7 @@ function DoneCard({
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
-        <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+        <CheckCircle2 className="h-12 w-12 text-emerald-700" />
         <div>
           <h3 className="text-lg font-semibold">Імпорт завершено</h3>
           <p className="text-sm text-muted-foreground">

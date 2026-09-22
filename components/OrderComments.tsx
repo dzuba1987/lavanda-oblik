@@ -135,7 +135,7 @@ export function OrderComments({ orderId }: { orderId: string }) {
             size="sm"
             onClick={handleAdd}
             disabled={submitting || !text.trim()}
-            className="bg-violet-600 hover:bg-violet-700"
+            className="bg-brand hover:bg-brand/90"
           >
             {submitting ? (
               <Loader2 className="mr-1 h-4 w-4 animate-spin" />

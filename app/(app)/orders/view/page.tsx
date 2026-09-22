@@ -45,7 +45,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
   new: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200",
-  confirmed: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200",
+  confirmed: "bg-brand-soft text-brand-text dark:bg-violet-950/40 dark:text-violet-200",
   in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
   assembled: "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-200",
   ready: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200",
@@ -56,7 +56,7 @@ export default function OrderViewPage() {
     <Suspense
       fallback={
         <main className="flex flex-1 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-brand-text" />
         </main>
       }
     >
@@ -108,7 +108,7 @@ function OrderViewInner() {
   if (authLoading || loading) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-text" />
       </main>
     );
   }
@@ -204,8 +204,8 @@ function OrderDetails({ order }: { order: Order }) {
                 className={cn(
                   "text-lg font-semibold tabular-nums",
                   isOrderPaid(order)
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-amber-600 dark:text-amber-400"
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-amber-700 dark:text-amber-400"
                 )}
               >
                 {formatMoney(order.totalAmount)}
@@ -348,7 +348,7 @@ function DeliveryCard({ delivery }: { delivery: Delivery }) {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-violet-600 hover:underline dark:text-violet-400"
+                className="inline-flex items-center gap-1 text-xs text-brand-text hover:underline dark:text-violet-400"
               >
                 Відстежити
                 <ExternalLink className="h-3 w-3" />
@@ -373,7 +373,7 @@ function DeliveryCard({ delivery }: { delivery: Delivery }) {
                   className="h-8 gap-1.5"
                 >
                   <a href={mapUrl} target="_blank" rel="noopener noreferrer">
-                    <Navigation className="h-3.5 w-3.5 text-violet-600" />
+                    <Navigation className="h-3.5 w-3.5 text-brand-text" />
                     Маршрут
                   </a>
                 </Button>

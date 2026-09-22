@@ -370,7 +370,7 @@ export function TransactionForm(props: TransactionFormProps) {
           {initial?.orderId && (
             <Link
               href={`/orders/view/?id=${initial.orderId}`}
-              className="flex items-center justify-between gap-2 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-900 hover:bg-violet-100 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-950/60"
+              className="flex items-center justify-between gap-2 rounded-md border border-violet-200 bg-brand-soft px-3 py-2 text-sm text-violet-900 hover:bg-brand-soft dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-950/60"
             >
               <span className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 shrink-0" />
@@ -534,8 +534,8 @@ export function TransactionForm(props: TransactionFormProps) {
             disabled={saving}
             className={cn(
               type === "income"
-                ? "bg-emerald-600 hover:bg-emerald-700"
-                : "bg-red-600 hover:bg-red-700"
+                ? "bg-emerald-700 text-white hover:bg-emerald-800"
+                : "bg-red-600 text-white hover:bg-red-700"
             )}
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

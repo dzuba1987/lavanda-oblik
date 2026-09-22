@@ -54,7 +54,7 @@ export default function HelpPage() {
               <a
                 key={t.href}
                 href={t.href}
-                className="text-violet-700 transition-colors hover:underline dark:text-violet-300"
+                className="text-brand-text transition-colors hover:underline dark:text-violet-300"
               >
                 {t.label}
               </a>
@@ -715,7 +715,7 @@ function H3({ children }: { children: React.ReactNode }) {
 function Step({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <div className="my-2 flex gap-3 text-sm">
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700 dark:bg-violet-950/50 dark:text-violet-200">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-semibold text-brand-text dark:bg-violet-950/50 dark:text-violet-200">
         {n}
       </div>
       <div className="flex-1">{children}</div>
@@ -733,7 +733,7 @@ function Callout({
   const toneClass =
     tone === "amber"
       ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
-      : "border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-200";
+      : "border-violet-300 bg-brand-soft text-violet-900 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-200";
   return (
     <div className={`my-3 rounded-md border px-3 py-2 text-sm ${toneClass}`}>
       {children}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useTheme } from "next-themes";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -14,6 +15,10 @@ import {
   HelpCircle,
   Camera,
   User as UserIcon,
+  Sun,
+  Moon,
+  Monitor,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -94,7 +99,7 @@ function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 active
-                  ? "bg-violet-100 text-violet-900 dark:bg-violet-950/50 dark:text-violet-200"
+                  ? "bg-brand-soft text-violet-900 dark:bg-violet-950/50 dark:text-violet-200"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
@@ -122,7 +127,7 @@ function Sidebar() {
           className={cn(
             "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
             isActive(pathname, "/help/")
-              ? "bg-violet-100 text-violet-900 dark:bg-violet-950/50 dark:text-violet-200"
+              ? "bg-brand-soft text-violet-900 dark:bg-violet-950/50 dark:text-violet-200"
               : "text-muted-foreground hover:bg-accent hover:text-foreground"
           )}
         >
@@ -220,7 +225,7 @@ function BottomNav() {
             className={cn(
               "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 text-[10px] tracking-tight",
               active
-                ? "text-violet-600 dark:text-violet-400"
+                ? "text-brand-text dark:text-violet-400"
                 : "text-muted-foreground"
             )}
           >
@@ -265,7 +270,9 @@ function NavCountBadge({
   ping?: boolean;
   ariaLabel?: string;
 }) {
-  const bg = tone === "violet" ? "bg-violet-500" : "bg-red-500";
+  // -700 замість -500: білі цифри 10px на red-500 давали 3.81:1, а цей
+  // бейдж висить у навігації на кожній сторінці.
+  const bg = tone === "violet" ? "bg-brand" : "bg-red-700";
   return (
     <span
       className={cn("relative inline-flex", compact ? "" : "ml-auto")}
@@ -281,7 +288,8 @@ function NavCountBadge({
       )}
       <span
         className={cn(
-          "relative inline-flex items-center justify-center rounded-full font-semibold tabular-nums text-white shadow",
+          "relative inline-flex items-center justify-center rounded-full font-semibold tabular-nums shadow",
+          tone === "violet" ? "text-brand-fg" : "text-white",
           bg,
           compact
             ? "h-4 min-w-[1rem] px-1 text-[10px]"
@@ -319,7 +327,7 @@ function ProfileMenu({
             compact && "w-auto"
           )}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm font-semibold text-violet-700 dark:bg-violet-950/50 dark:text-violet-200">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand-text dark:bg-violet-950/50 dark:text-violet-200">
             {initials || <UserIcon className="h-4 w-4" />}
           </div>
           {!compact && (
@@ -345,12 +353,54 @@ function ProfileMenu({
           </Badge>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <ThemeItems />
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut} variant="destructive">
           <LogOut className="mr-2 h-4 w-4" />
           Вийти
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+const THEMES = [
+  { value: "light", label: "Світла", Icon: Sun },
+  { value: "dark", label: "Темна", Icon: Moon },
+  { value: "system", label: "Як у системі", Icon: Monitor },
+] as const;
+
+function ThemeItems() {
+  const { theme, setTheme } = useTheme();
+
+  // До гідратації next-themes не знає обраної теми — рендеримо пункти без
+  // галочки, інакше сервер і клієнт розходяться. useSyncExternalStore, а не
+  // useEffect + setState: те саме «ми вже на клієнті», але без зайвого рендеру.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+
+  return (
+    <>
+      <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+        Тема
+      </DropdownMenuLabel>
+      {THEMES.map(({ value, label, Icon }) => (
+        <DropdownMenuItem
+          key={value}
+          onClick={() => setTheme(value)}
+          onSelect={(e) => e.preventDefault()}
+        >
+          <Icon className="mr-2 h-4 w-4" />
+          <span className="flex-1">{label}</span>
+          {mounted && theme === value && (
+            <Check className="ml-2 h-4 w-4 text-brand-text" />
+          )}
+        </DropdownMenuItem>
+      ))}
+    </>
   );
 }
 

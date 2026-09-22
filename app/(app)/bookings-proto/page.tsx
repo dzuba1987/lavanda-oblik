@@ -95,7 +95,7 @@ function Mini({ variant }: { variant: V }) {
               key={i}
               className={cn(
                 "relative flex aspect-square items-center justify-center rounded-md text-xs",
-                isToday ? "bg-violet-600 text-white" : "hover:bg-accent",
+                isToday ? "bg-brand text-brand-fg" : "hover:bg-accent",
                 variant === "bg" && bad && !isToday
                   ? "bg-sky-100 dark:bg-sky-950/40"
                   : ""
@@ -124,7 +124,7 @@ function Mini({ variant }: { variant: V }) {
 
               {/* D: заливка тла + маленька крапля */}
               {variant === "bg" && bad && !isToday && (
-                <span className="absolute right-0.5 top-0 text-[8px] leading-none text-sky-500">
+                <span className="absolute right-0.5 top-0 text-[8px] leading-none text-sky-700">
                   💧
                 </span>
               )}

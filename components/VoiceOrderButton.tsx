@@ -115,7 +115,7 @@ export function VoiceOrderButton({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-violet-600" />
+              <Sparkles className="h-4 w-4 text-brand-text" />
               Голосове замовлення
             </DialogTitle>
           </DialogHeader>
@@ -124,7 +124,7 @@ export function VoiceOrderButton({
             {/* Status */}
             <div className="text-xs text-muted-foreground">
               {speech.status === "listening" && (
-                <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
+                <span className="flex items-center gap-1.5 text-red-700 dark:text-red-400">
                   <span className="relative flex h-2 w-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
@@ -139,7 +139,7 @@ export function VoiceOrderButton({
                 <span>Готово. Перевір транскрипт нижче або запиши ще раз.</span>
               )}
               {speech.status === "error" && (
-                <span className="text-red-600 dark:text-red-400">
+                <span className="text-red-700 dark:text-red-400">
                   Помилка: {speech.error}
                 </span>
               )}
@@ -147,8 +147,8 @@ export function VoiceOrderButton({
 
             {/* Example hint — лише коли ще нічого не записано і не слухаємо */}
             {speech.status === "idle" && !hasTranscript && (
-              <div className="rounded-md border border-dashed border-violet-200 bg-violet-50/50 p-2.5 text-xs dark:border-violet-900/40 dark:bg-violet-950/20">
-                <div className="mb-1 font-medium text-violet-700 dark:text-violet-300">
+              <div className="rounded-md border border-dashed border-violet-200 bg-brand-soft/50 p-2.5 text-xs dark:border-violet-900/40 dark:bg-violet-950/20">
+                <div className="mb-1 font-medium text-brand-text dark:text-violet-300">
                   Приклад:
                 </div>
                 <div className="italic text-muted-foreground">
@@ -168,7 +168,7 @@ export function VoiceOrderButton({
                   "flex h-20 w-20 items-center justify-center rounded-full shadow-lg transition-all",
                   isListening
                     ? "bg-red-500 text-white hover:bg-red-600 ring-4 ring-red-200 dark:ring-red-900/40"
-                    : "bg-violet-600 text-white hover:bg-violet-700 hover:scale-105"
+                    : "bg-brand text-brand-fg hover:bg-brand/90 hover:scale-105"
                 )}
               >
                 {isListening ? (
@@ -221,7 +221,7 @@ export function VoiceOrderButton({
               type="button"
               onClick={handleProcess}
               disabled={!hasTranscript || isListening || parsing}
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-brand hover:bg-brand/90"
             >
               {parsing ? (
                 <>

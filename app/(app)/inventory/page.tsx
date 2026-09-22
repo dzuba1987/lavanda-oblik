@@ -296,7 +296,7 @@ function StockText({
 }) {
   const v = stock ?? 0;
   return (
-    <span className={cn(v <= 0 && "text-red-600 dark:text-red-400")}>
+    <span className={cn(v <= 0 && "text-red-700 dark:text-red-400")}>
       Залишок: {formatQty(v)}
       {unit ? ` ${unit}` : ""}
     </span>
@@ -597,7 +597,7 @@ function InventoryFormDialog({
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-violet-600 hover:bg-violet-700"
+            className="bg-brand hover:bg-brand/90"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Зберегти

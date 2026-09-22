@@ -225,7 +225,7 @@ function SupplierFormDialog({
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-violet-600 hover:bg-violet-700"
+            className="bg-brand hover:bg-brand/90"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Зберегти

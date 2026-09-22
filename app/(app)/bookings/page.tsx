@@ -120,7 +120,7 @@ const STATUS_META: Record<
   },
   confirmed: {
     label: "Підтверджено",
-    cls: "bg-violet-100 text-violet-900 border-violet-300 dark:bg-violet-950/40 dark:text-violet-200 dark:border-violet-800",
+    cls: "bg-brand-soft text-violet-900 border-violet-300 dark:bg-violet-950/40 dark:text-violet-200 dark:border-violet-800",
     dot: "bg-violet-500",
   },
   done: {
@@ -382,7 +382,7 @@ function BookingsView() {
         </div>
         <Button
           onClick={() => openNew()}
-          className="bg-violet-600 hover:bg-violet-700"
+          className="bg-brand hover:bg-brand/90"
         >
           <Plus className="mr-1 h-4 w-4" /> Запис
         </Button>
@@ -550,7 +550,7 @@ function DayNav({
             aria-label="Погодинна погода"
             title="Погодинна погода"
             className={cn(
-              weatherOn && "border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300"
+              weatherOn && "border-violet-300 bg-brand-soft text-brand-text dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300"
             )}
           >
             <Cloud className="h-4 w-4" />
@@ -558,7 +558,7 @@ function DayNav({
         )}
         <ViewToggle view={view} onChange={onViewChange} />
         {view === "slots" ? (
-          <Badge className="gap-1 bg-violet-100 text-violet-700 hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-300">
+          <Badge className="gap-1 bg-brand-soft text-brand-text hover:bg-brand-soft dark:bg-violet-950/40 dark:text-violet-300">
             <Star className="h-3 w-3 fill-current" />
             рекомендовані слоти {recommendedCount}
           </Badge>
@@ -593,7 +593,7 @@ function ViewToggle({
           className={cn(
             "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors",
             view === key
-              ? "bg-violet-600 text-white"
+              ? "bg-brand text-brand-fg"
               : "text-muted-foreground hover:bg-accent"
           )}
         >
@@ -656,18 +656,18 @@ function PaymentBadge({
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuLabel className="text-xs">Оплата</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => onSetPayment(b, "paid", "cash")}>
-          <Banknote className="mr-2 h-4 w-4 text-emerald-600" />
+          <Banknote className="mr-2 h-4 w-4 text-emerald-700" />
           Оплачено · готівка
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onSetPayment(b, "paid", "card")}>
-          <CreditCard className="mr-2 h-4 w-4 text-sky-600" />
+          <CreditCard className="mr-2 h-4 w-4 text-sky-700" />
           Оплачено · картка
         </DropdownMenuItem>
         {paid && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onSetPayment(b, "unpaid", null)}>
-              <CircleAlert className="mr-2 h-4 w-4 text-amber-600" />
+              <CircleAlert className="mr-2 h-4 w-4 text-amber-700" />
               Зняти оплату
             </DropdownMenuItem>
           </>
@@ -804,7 +804,7 @@ function MobileTimeline({
                     <div
                       className={cn(
                         "tabular-nums",
-                        rain ? "text-blue-500" : "text-muted-foreground"
+                        rain ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground"
                       )}
                     >
                       {rain ? `💧${hw.precipProb}%` : `☁${hw.cloud ?? "—"}%`}
@@ -1037,7 +1037,7 @@ function SlotsView({
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
                 cat === key
-                  ? "border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300"
+                  ? "border-violet-300 bg-brand-soft text-brand-text dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300"
                   : "text-muted-foreground hover:bg-accent"
               )}
             >
@@ -1087,7 +1087,7 @@ function SlotCard({ slot, onBook }: { slot: RecSlot; onBook: () => void }) {
   const { Icon } = slot;
   return (
     <div className="flex items-center gap-3 rounded-lg border px-3 py-2.5">
-      <Icon className="h-5 w-5 shrink-0 text-amber-500" />
+      <Icon className="h-5 w-5 shrink-0 text-amber-700" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold tabular-nums">
@@ -1106,7 +1106,7 @@ function SlotCard({ slot, onBook }: { slot: RecSlot; onBook: () => void }) {
       <Button
         size="sm"
         onClick={onBook}
-        className="shrink-0 bg-violet-600 hover:bg-violet-700"
+        className="shrink-0 bg-brand hover:bg-brand/90"
       >
         Забронювати
       </Button>
@@ -1158,7 +1158,7 @@ function HourlyWeatherCol({ hourly }: { hourly: HourWeather[] }) {
             <span
               className={cn(
                 "text-[9px] tabular-nums",
-                rain ? "text-blue-500" : "text-muted-foreground"
+                rain ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground"
               )}
             >
               {rain
@@ -1273,7 +1273,7 @@ function Timeline({
             key={h}
             onClick={() => onSlotClick(h)}
             style={{ top: i * PX_PER_HOUR, height: PX_PER_HOUR }}
-            className="group absolute inset-x-0 border-b border-dashed border-border/60 transition-colors hover:bg-violet-50/60 dark:hover:bg-violet-950/20"
+            className="group absolute inset-x-0 border-b border-dashed border-border/60 transition-colors hover:bg-brand-soft/60 dark:hover:bg-violet-950/20"
           >
             <Plus className="absolute right-2 top-1.5 h-3.5 w-3.5 text-violet-400 opacity-0 transition-opacity group-hover:opacity-100" />
           </button>
@@ -1337,7 +1337,7 @@ function Timeline({
 /** Бейдж «йде зараз» — пульсуюча крапка + текст. */
 function OngoingBadge() {
   return (
-    <span className="flex shrink-0 items-center gap-1 rounded bg-rose-500 px-1 py-0.5 text-[10px] font-medium leading-none text-white">
+    <span className="flex shrink-0 items-center gap-1 rounded bg-rose-700 px-1 py-0.5 text-[10px] font-medium leading-none text-white">
       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
       йде
     </span>
@@ -1353,7 +1353,7 @@ function NowLine({ top, now }: { top: number; now: Date }) {
     >
       <div className="relative h-0.5 bg-rose-500">
         <span className="absolute -left-1 -top-[3px] h-2 w-2 rounded-full bg-rose-500" />
-        <span className="absolute left-1 -top-2.5 rounded bg-rose-500 px-1 text-[10px] font-medium leading-tight text-white tabular-nums">
+        <span className="absolute left-1 -top-2.5 rounded bg-rose-700 px-1 text-[10px] font-medium leading-tight text-white tabular-nums">
           {hhmm(now)}
         </span>
       </div>
@@ -1518,7 +1518,7 @@ function WeatherCard({
               className={cn(
                 "flex-1 rounded px-1.5 py-1 font-medium transition-colors",
                 provider === p
-                  ? "bg-violet-600 text-white"
+                  ? "bg-brand text-brand-fg"
                   : "text-muted-foreground hover:bg-accent"
               )}
             >
@@ -1558,13 +1558,13 @@ function WeatherCard({
 
           <div className="grid grid-cols-2 gap-1.5 text-xs">
             <div className="flex items-center gap-1.5">
-              <Sunrise className="h-3.5 w-3.5 text-amber-500" />
+              <Sunrise className="h-3.5 w-3.5 text-amber-700" />
               <span className="tabular-nums">
                 {weather.sunrise ? hhmm(weather.sunrise) : "—"}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Sunset className="h-3.5 w-3.5 text-orange-500" />
+              <Sunset className="h-3.5 w-3.5 text-orange-700" />
               <span className="tabular-nums">
                 {weather.sunset ? hhmm(weather.sunset) : "—"}
               </span>
@@ -1725,9 +1725,9 @@ function MiniMonth({
               className={cn(
                 "relative aspect-square rounded-md text-xs transition-colors",
                 isSel
-                  ? "bg-violet-600 text-white"
+                  ? "bg-brand text-brand-fg"
                   : isToday
-                  ? "bg-violet-100 text-violet-900 dark:bg-violet-950/50"
+                  ? "bg-brand-soft text-violet-900 dark:bg-violet-950/50"
                   : "hover:bg-accent"
               )}
             >
@@ -2150,7 +2150,7 @@ function BookingFormDialog({
               variant="outline"
               onClick={handleDelete}
               disabled={deleting || saving}
-              className="text-red-600 hover:text-red-700"
+              className="text-red-700 hover:text-red-700"
             >
               <Trash2 className="h-4 w-4" /> Видалити
             </Button>
@@ -2164,7 +2164,7 @@ function BookingFormDialog({
             <Button
               onClick={handleSave}
               disabled={saving}
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-brand hover:bg-brand/90"
             >
               {saving ? "Збереження…" : "Зберегти"}
             </Button>

@@ -254,13 +254,13 @@ export default function TransactionsPage() {
         <div className="hidden gap-2 md:flex">
           <Button
             onClick={() => openCreate("income")}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            className="bg-emerald-700 text-white hover:bg-emerald-800"
           >
             <ArrowDownToLine className="mr-1 h-4 w-4" /> Дохід
           </Button>
           <Button
             onClick={() => openCreate("expense")}
-            className="bg-red-600 hover:bg-red-700"
+            className="bg-red-600 text-white hover:bg-red-700"
           >
             <ArrowUpFromLine className="mr-1 h-4 w-4" /> Витрата
           </Button>
@@ -284,8 +284,8 @@ export default function TransactionsPage() {
         </div>
 
         {productFilter && (
-          <div className="flex items-center gap-2 rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-sm dark:border-violet-800 dark:bg-violet-950/40">
-            <ShoppingCart className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-300" />
+          <div className="flex items-center gap-2 rounded-md border border-violet-300 bg-brand-soft px-3 py-1.5 text-sm dark:border-violet-800 dark:bg-violet-950/40">
+            <ShoppingCart className="h-3.5 w-3.5 shrink-0 text-brand-text dark:text-violet-300" />
             <span className="min-w-0 flex-1 truncate">
               Товар:{" "}
               <span className="font-medium">
@@ -299,7 +299,7 @@ export default function TransactionsPage() {
               variant="ghost"
               size="icon"
               onClick={clearProductFilter}
-              className="h-6 w-6 shrink-0 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900"
+              className="h-6 w-6 shrink-0 text-brand-text hover:bg-brand-soft dark:text-violet-200 dark:hover:bg-violet-900"
               aria-label="Скинути фільтр товару"
             >
               <X className="h-3.5 w-3.5" />
@@ -474,7 +474,7 @@ function SummaryCard({
   const colorClass = {
     emerald: "text-emerald-700 dark:text-emerald-300",
     red: "text-red-700 dark:text-red-300",
-    violet: "text-violet-700 dark:text-violet-300",
+    violet: "text-brand-text dark:text-violet-300",
   }[color];
   return (
     <Card size="sm" className="py-3">
@@ -542,7 +542,7 @@ function TransactionRow({
             </span>
             {t.orderId && (
               <ShoppingCart
-                className="mt-1 h-3 w-3 shrink-0 text-violet-600 dark:text-violet-400 md:mt-0"
+                className="mt-1 h-3 w-3 shrink-0 text-brand-text dark:text-violet-400 md:mt-0"
                 aria-label="З замовлення"
               />
             )}
@@ -563,7 +563,7 @@ function TransactionRow({
             )}
           </div>
           {t.note && (
-            <div className="mt-0.5 line-clamp-3 text-xs text-muted-foreground/80 md:line-clamp-none md:truncate">
+            <div className="mt-0.5 line-clamp-3 text-xs text-muted-foreground md:line-clamp-none md:truncate">
               {t.note}
             </div>
           )}
@@ -637,7 +637,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
             змініть період.
           </p>
         </div>
-        <Button onClick={onCreate} className="bg-violet-600 hover:bg-violet-700">
+        <Button onClick={onCreate} className="bg-brand hover:bg-brand/90">
           <Plus className="mr-1 h-4 w-4" />
           Додати запис
         </Button>
@@ -658,7 +658,7 @@ function FAB({
       <DropdownMenuTrigger asChild>
         <Button
           size="icon"
-          className="fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full bg-violet-600 shadow-lg hover:bg-violet-700 md:hidden"
+          className="fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full bg-brand shadow-lg hover:bg-brand/90 md:hidden"
           aria-label="Додати"
         >
           <Plus className="h-6 w-6" />
@@ -666,11 +666,11 @@ function FAB({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="top">
         <DropdownMenuItem onClick={onIncome}>
-          <ArrowDownToLine className="mr-2 h-4 w-4 text-emerald-600" />
+          <ArrowDownToLine className="mr-2 h-4 w-4 text-emerald-700" />
           Дохід
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onExpense}>
-          <ArrowUpFromLine className="mr-2 h-4 w-4 text-red-600" />
+          <ArrowUpFromLine className="mr-2 h-4 w-4 text-red-700" />
           Витрата
         </DropdownMenuItem>
       </DropdownMenuContent>

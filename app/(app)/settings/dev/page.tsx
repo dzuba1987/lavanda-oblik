@@ -38,7 +38,7 @@ export default function DevSettingsPage() {
   if (loading || !allowed) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand-text" />
       </main>
     );
   }
@@ -194,7 +194,7 @@ export default function DevSettingsPage() {
           <Button
             onClick={handleApplyDictionaries}
             disabled={busy !== null}
-            className="bg-violet-600 hover:bg-violet-700"
+            className="bg-brand hover:bg-brand/90"
           >
             {busy === "dict" ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -222,7 +222,7 @@ export default function DevSettingsPage() {
           <Button
             onClick={handleBackup}
             disabled={busy !== null}
-            className="bg-violet-600 hover:bg-violet-700"
+            className="bg-brand hover:bg-brand/90"
           >
             {busy === "backup" ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -266,7 +266,7 @@ export default function DevSettingsPage() {
               <Button
                 onClick={handleDupeMerge}
                 disabled={busy !== null}
-                className="bg-violet-600 hover:bg-violet-700"
+                className="bg-brand hover:bg-brand/90"
               >
                 {busy === "dupeMerge" ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -324,7 +324,7 @@ export default function DevSettingsPage() {
             <Button
               onClick={handleSeed}
               disabled={busy !== null}
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-brand hover:bg-brand/90"
             >
               {busy === "seed" ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
